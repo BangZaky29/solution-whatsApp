@@ -110,6 +110,12 @@ function base64ToBuffer(obj) {
  * @returns {Promise<{ state: AuthenticationState, saveCreds: () => Promise<void> }>}
  */
 async function useSupabaseAuthState(sessionId = 'main-session') {
+    // Determined Table Name based on environment
+    const USE_PRODUCTION = process.env.USE_PRODUCTION_DB === 'true';
+    const TABLE_NAME = USE_PRODUCTION ? 'wa_sessions' : 'wa_sessions_local';
+
+    console.log(`🔌 WhatsApp Auth Storage: Using table '${TABLE_NAME}' (${USE_PRODUCTION ? 'Production' : 'Development'})`);
+
     /**
      * Generates the database key for a given data type and ID
      * This prefixes keys with sessionId to support multiple sessions
@@ -128,7 +134,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
 
         try {
             const { error } = await supabase
-                .from('wa_sessions')
+                .from(TABLE_NAME)
                 .upsert({
                     id: key,
                     value: serializedValue
@@ -137,8 +143,8 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
                 });
 
             if (error) {
-                console.error(`⚠️ Error writing ${key}:`, error.message);
-                console.error(`   Hint: Run "ALTER TABLE wa_sessions DISABLE ROW LEVEL SECURITY;" in Supabase SQL Editor`);
+                console.error(`⚠️ Error writing ${key} to ${TABLE_NAME}:`, error.message);
+                console.error(`   Hint: Run "ALTER TABLE ${TABLE_NAME} DISABLE ROW LEVEL SECURITY;" in Supabase SQL Editor`);
                 // Don't throw - allow connection to continue
             }
         } catch (err) {
@@ -154,7 +160,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         const key = getKey(type, id);
 
         const { data, error } = await supabase
-            .from('wa_sessions')
+            .from(TABLE_NAME)
             .select('value')
             .eq('id', key)
             .single();
@@ -164,7 +170,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
                 // No rows returned - this is normal for first run
                 return null;
             }
-            console.error(`Error reading ${key}:`, error);
+            console.error(`Error reading ${key} from ${TABLE_NAME}:`, error);
             return null;
         }
 
@@ -183,12 +189,12 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         const key = getKey(type, id);
 
         const { error } = await supabase
-            .from('wa_sessions')
+            .from(TABLE_NAME)
             .delete()
             .eq('id', key);
 
         if (error) {
-            console.error(`Error removing ${key}:`, error);
+            console.error(`Error removing ${key} from ${TABLE_NAME}:`, error);
         }
     };
 
@@ -199,12 +205,12 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         const fullPrefix = `${sessionId}:${prefix}`;
 
         const { error } = await supabase
-            .from('wa_sessions')
+            .from(TABLE_NAME)
             .delete()
             .like('id', `${fullPrefix}%`);
 
         if (error) {
-            console.error(`Error removing by prefix ${fullPrefix}:`, error);
+            console.error(`Error removing by prefix ${fullPrefix} from ${TABLE_NAME}:`, error);
         }
     };
 
@@ -293,7 +299,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         clearSession: async () => {
             // Delete all data with this session prefix
             const { error } = await supabase
-                .from('wa_sessions')
+                .from(TABLE_NAME)
                 .delete()
                 .like('id', `${sessionId}:%`);
 
