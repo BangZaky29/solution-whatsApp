@@ -69,10 +69,13 @@ app.use(helmet({
 
 // CORS - Allow all origins in development
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production'
-        ? [process.env.ALLOWED_ORIGIN].filter(Boolean)
-        : '*',
-    credentials: true
+    origin: [
+        'https://admin-controller.nuansasolution.id',
+        'https://nuansasolution.id',
+        'http://localhost:5173' // Untuk test lokal
+    ],
+    credentials: true, // Izinkan cookie/session jika perlu
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 
 // Body parser
