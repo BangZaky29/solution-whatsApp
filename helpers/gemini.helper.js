@@ -16,7 +16,7 @@ class GeminiHelper {
 
         // STABLE CONFIG: Menggunakan gemini-1.5-flash dengan v1beta untuk fitur gratis yang stabil
         this.model = this.genAI.getGenerativeModel(
-            { model: "gemini-2.5-flash" },
+            { model: "gemini-1.5-flash" },
             { apiVersion: 'v1beta' }
         );
 

@@ -92,6 +92,7 @@ app.use(cors({
     origin: [
         'https://admin-controller.nuansasolution.id',
         'https://nuansasolution.id',
+        'https://new-wa-bot-ai.bangzaky0029.workers.dev',
         'http://localhost:5173',
         'http://localhost:5174'
     ],
