@@ -15,21 +15,57 @@ const router = express.Router();
  * @param {function} getConnectionState - Function to get connection state
  * @param {function} getClearSession - Function to get clearSession handler
  */
-function createWhatsAppRoutes(getSocket, getConnectionState, getClearSession) {
+function createWhatsAppRoutes(getSession, connectToWhatsApp) {
     const whatsappService = require('../services/whatsapp.service');
 
     /**
-     * GET /api/whatsapp/status
+     * Middleware to validate session
+     */
+    const validateSession = (req, res, next) => {
+        const { sessionId } = req.params;
+        const session = getSession(sessionId);
+
+        if (!session && req.path !== `/${sessionId}/init`) {
+            return res.status(404).json({
+                success: false,
+                error: `Session '${sessionId}' not found. Please initialize first at /api/whatsapp/${sessionId}/init (POST)`
+            });
+        }
+
+        req.whatsappSession = session;
+        next();
+    };
+
+    /**
+     * POST /api/whatsapp/:sessionId/init
+     * Initialize or restart a session
+     */
+    router.post('/:sessionId/init', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            await connectToWhatsApp(sessionId);
+            res.json({
+                success: true,
+                message: `Initializing session '${sessionId}'...`
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    /**
+     * GET /api/whatsapp/:sessionId/status
      * Get current connection status and QR code if available
      */
-    router.get('/status', (req, res) => {
+    router.get('/:sessionId/status', validateSession, (req, res) => {
         try {
-            const socket = getSocket();
-            const connectionState = getConnectionState();
+            const { sessionId } = req.params;
+            const { socket, connectionState } = req.whatsappSession;
             const status = whatsappService.getConnectionStatus(socket, connectionState);
 
             res.json({
                 success: true,
+                sessionId,
                 ...status
             });
         } catch (error) {
@@ -42,12 +78,12 @@ function createWhatsAppRoutes(getSocket, getConnectionState, getClearSession) {
     });
 
     /**
-     * GET /api/whatsapp/qr
+     * GET /api/whatsapp/:sessionId/qr
      * Get QR code as base64 image for frontend display
      */
-    router.get('/qr', async (req, res) => {
+    router.get('/:sessionId/qr', validateSession, async (req, res) => {
         try {
-            const connectionState = getConnectionState();
+            const { connectionState } = req.whatsappSession;
 
             if (!connectionState.qr) {
                 return res.json({
@@ -78,14 +114,14 @@ function createWhatsAppRoutes(getSocket, getConnectionState, getClearSession) {
     });
 
     /**
-     * POST /api/whatsapp/send
+     * POST /api/whatsapp/:sessionId/send
      * Send a text message
      * Body: { number: "628xxx", message: "Hello" }
      */
-    router.post('/send', async (req, res) => {
+    router.post('/:sessionId/send', validateSession, async (req, res) => {
         try {
             const { number, message } = req.body;
-            const socket = getSocket();
+            const { socket } = req.whatsappSession;
 
             const result = await whatsappService.sendTextMessage(socket, number, message);
 
@@ -104,14 +140,14 @@ function createWhatsAppRoutes(getSocket, getConnectionState, getClearSession) {
     });
 
     /**
-     * POST /api/whatsapp/send-media
+     * POST /api/whatsapp/:sessionId/send-media
      * Send a media message
      * Body: { number: "628xxx", media: { type: "image|video|document|audio", url: "...", caption: "..." } }
      */
-    router.post('/send-media', async (req, res) => {
+    router.post('/:sessionId/send-media', validateSession, async (req, res) => {
         try {
             const { number, media } = req.body;
-            const socket = getSocket();
+            const { socket } = req.whatsappSession;
 
             if (!media || !media.type || !media.url) {
                 return res.status(400).json({
@@ -137,14 +173,14 @@ function createWhatsAppRoutes(getSocket, getConnectionState, getClearSession) {
     });
 
     /**
-     * POST /api/whatsapp/send-bulk
+     * POST /api/whatsapp/:sessionId/send-bulk
      * Send message to multiple numbers
      * Body: { numbers: ["628xxx", "628yyy"], message: "Hello" }
      */
-    router.post('/send-bulk', async (req, res) => {
+    router.post('/:sessionId/send-bulk', validateSession, async (req, res) => {
         try {
             const { numbers, message } = req.body;
-            const socket = getSocket();
+            const { socket } = req.whatsappSession;
 
             if (!Array.isArray(numbers) || numbers.length === 0) {
                 return res.status(400).json({
@@ -193,31 +229,30 @@ function createWhatsAppRoutes(getSocket, getConnectionState, getClearSession) {
     });
 
     /**
-     * POST /api/whatsapp/logout
+     * POST /api/whatsapp/:sessionId/logout
      * Logout and clear session from Supabase
      */
-    router.post('/logout', async (req, res) => {
+    router.post('/:sessionId/logout', validateSession, async (req, res) => {
         try {
-            const socket = getSocket();
-            const clearSession = getClearSession();
+            const { socket, clearSessionHandler } = req.whatsappSession;
 
             // Logout from WhatsApp
             if (socket) {
                 try {
                     await socket.logout();
                 } catch (e) {
-                    console.log('Socket logout error (may be already disconnected):', e.message);
+                    console.log('Socket logout error:', e.message);
                 }
             }
 
             // Clear session from Supabase
-            if (clearSession) {
-                await clearSession();
+            if (clearSessionHandler) {
+                await clearSessionHandler();
             }
 
             res.json({
                 success: true,
-                message: 'Logged out successfully. Session cleared from database.'
+                message: `Session '${req.params.sessionId}' logged out successfully.`
             });
         } catch (error) {
             console.error('Error during logout:', error);
@@ -229,12 +264,12 @@ function createWhatsAppRoutes(getSocket, getConnectionState, getClearSession) {
     });
 
     /**
-     * GET /api/whatsapp/info
+     * GET /api/whatsapp/:sessionId/info
      * Get connected device info
      */
-    router.get('/info', (req, res) => {
+    router.get('/:sessionId/info', validateSession, (req, res) => {
         try {
-            const socket = getSocket();
+            const { socket } = req.whatsappSession;
 
             if (!socket || !socket.user) {
                 return res.status(400).json({
@@ -261,70 +296,48 @@ function createWhatsAppRoutes(getSocket, getConnectionState, getClearSession) {
     });
 
     /**
-     * POST /api/whatsapp/notify/payment-confirmation
-     * Send payment confirmation notification to Admin
-     * Body: { user_name, package_name, amount, invoice_id }
+     * POST /api/whatsapp/:sessionId/notify/payment-confirmation
      */
-    router.post('/notify/payment-confirmation', async (req, res) => {
+    router.post('/:sessionId/notify/payment-confirmation', validateSession, async (req, res) => {
         const ADMIN_NUMBER = '6288294096100'; // Admin Ela
         const ADMIN_DASHBOARD_URL = 'https://admin-controller.nuansasolution.id/';
 
         try {
             const { user_name, package_name, amount, invoice_id } = req.body;
-            const socket = getSocket();
+            const { socket } = req.whatsappSession;
 
-            // validation
             if (!user_name || !package_name || !amount) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Missing required fields: user_name, package_name, amount'
+                    error: 'Missing required fields'
                 });
             }
 
-            // Format amount to IDR
             const formattedAmount = new Intl.NumberFormat('id-ID', {
                 style: 'currency',
                 currency: 'IDR',
                 minimumFractionDigits: 0
             }).format(amount);
 
-            // Construct Message
-            const message = `🔔 *Konfirmasi Pembayaran Baru*
+            const message = `🔔 *Konfirmasi Pembayaran Baru*\n\n` +
+                `Halo Admin Arin/Ela, ada pembayaran masuk yang perlu diverifikasi.\n\n` +
+                `👤 *User:* ${user_name}\n` +
+                `📦 *Paket:* ${package_name}\n` +
+                `💰 *Nominal:* ${formattedAmount}\n` +
+                `🧾 *Invoice:* ${invoice_id || '-'}\n\n` +
+                `Tolong segera kondisikan dan proses aktivasi di dashboard admin.\n` +
+                `👇\n${ADMIN_DASHBOARD_URL}`;
 
-Halo Admin Arin/Ela, ada pembayaran masuk yang perlu diverifikasi.
-
-👤 *User:* ${user_name}
-📦 *Paket:* ${package_name}
-💰 *Nominal:* ${formattedAmount}
-🧾 *Invoice:* ${invoice_id || '-'}
-
-Tolong segera kondisikan dan proses aktivasi di dashboard admin.
-👇
-${ADMIN_DASHBOARD_URL}`;
-
-            // Send Message
             const result = await whatsappService.sendTextMessage(socket, ADMIN_NUMBER, message);
 
             if (result.success) {
-                res.json({
-                    success: true,
-                    message: 'Notification sent to admin',
-                    details: result
-                });
+                res.json({ success: true, message: 'Notification sent' });
             } else {
-                res.status(500).json({
-                    success: false,
-                    error: 'Failed to send WhatsApp message',
-                    details: result
-                });
+                res.status(500).json({ success: false, error: 'Failed to send WhatsApp message' });
             }
-
         } catch (error) {
-            console.error('Error in payment-confirmation endpoint:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Internal server error'
-            });
+            console.error('Error in payment-confirmation:', error);
+            res.status(500).json({ success: false, error: 'Internal server error' });
         }
     });
 

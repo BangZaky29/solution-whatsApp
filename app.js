@@ -48,13 +48,19 @@ const baileysLogger = pino({ level: 'silent' });
 // ============================================
 // Global State
 // ============================================
-let socket = null;
-let clearSessionHandler = null;
-let connectionState = {
-    qr: null,
-    connection: 'disconnected',
-    phoneNumber: null
-};
+// ============================================
+// Global State - Multi-Session Support
+// ============================================
+/**
+ * sessions Map stores data for each WhatsApp connection:
+ * Key: sessionId (string)
+ * Value: { 
+ *   socket: WASocket, 
+ *   connectionState: { qr, connection, phoneNumber },
+ *   clearSessionHandler: Function
+ * }
+ */
+const sessions = new Map();
 
 // ============================================
 // Express App Setup
@@ -74,7 +80,7 @@ app.use(cors({
         'https://nuansasolution.id',
         'http://localhost:5173' // Untuk test lokal
     ],
-    credentials: true, // Izinkan cookie/session jika perlu
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 
@@ -88,11 +94,21 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/', (req, res) => {
+    const activeSessions = [];
+    sessions.forEach((val, key) => {
+        activeSessions.push({
+            id: key,
+            status: val.connectionState.connection,
+            phone: val.connectionState.phoneNumber
+        });
+    });
+
     res.json({
-        name: 'WhatsApp Gateway API',
-        version: '1.0.0',
+        name: 'WhatsApp Gateway API (Multi-Session)',
+        version: '1.1.0',
         status: 'running',
-        connection: connectionState.connection,
+        sessionsCount: sessions.size,
+        sessions: activeSessions,
         timestamp: new Date().toISOString()
     });
 });
@@ -101,16 +117,17 @@ app.get('/health', (req, res) => {
     res.json({
         status: 'healthy',
         uptime: process.uptime(),
-        connection: connectionState.connection
+        sessionsCount: sessions.size
     });
 });
 
-// WhatsApp routes
-const whatsappRoutes = createWhatsAppRoutes(
-    () => socket,
-    () => connectionState,
-    () => clearSessionHandler
-);
+/**
+ * Helper to get session data by ID
+ */
+const getSession = (sessionId) => sessions.get(sessionId) || null;
+
+// WhatsApp routes - modified to handle multi-session
+const whatsappRoutes = createWhatsAppRoutes(getSession, connectToWhatsApp);
 app.use('/api/whatsapp', whatsappRoutes);
 
 // 404 handler
@@ -134,138 +151,149 @@ app.use((err, req, res, next) => {
 // WhatsApp Connection Setup
 // ============================================
 
-/**
- * Initialize WhatsApp connection with Baileys
- * Uses Supabase for session persistence
- */
-async function connectToWhatsApp() {
+async function connectToWhatsApp(sessionId = 'main-session') {
     try {
-        console.log('\n🚀 Starting WhatsApp Gateway...\n');
+        // Prevent multiple simultaneous connection attempts for the same sessionId
+        const existingSession = sessions.get(sessionId);
+
+        if (existingSession) {
+            if (existingSession.connectionState.connection === 'open') {
+                console.log(`ℹ️ [${sessionId}] Already connected. skipping.`);
+                return;
+            }
+            if (existingSession.connectionState.connection === 'connecting') {
+                console.log(`ℹ️ [${sessionId}] Connection already in progress. skipping.`);
+                return;
+            }
+            // If there's an old socket that isn't connected, clean it up
+            if (existingSession.socket) {
+                console.log(`🧹 [${sessionId}] Cleaning up old socket before reconnecting...`);
+                try {
+                    existingSession.socket.ev.removeAllListeners();
+                    existingSession.socket.end();
+                } catch (e) { /* ignore */ }
+                existingSession.socket = null;
+            }
+        }
+
+        console.log(`\n🚀 [${sessionId}] Connecting to WhatsApp...`);
+
+        // Initialize or reset session data
+        const sessionData = {
+            socket: null,
+            clearSessionHandler: null,
+            connectionState: {
+                qr: null,
+                connection: 'connecting',
+                phoneNumber: existingSession?.connectionState?.phoneNumber || null
+            }
+        };
+        sessions.set(sessionId, sessionData);
 
         // Get latest Baileys version
-        const { version, isLatest } = await fetchLatestBaileysVersion();
-        console.log(`📦 Using Baileys v${version.join('.')} (latest: ${isLatest})`);
+        const { version } = await fetchLatestBaileysVersion();
 
         // Initialize auth state from Supabase
-        const sessionId = process.env.SESSION_ID || 'main-session';
         const { state, saveCreds, clearSession } = await useSupabaseAuthState(sessionId);
-
-        // Store clearSession handler for logout functionality
-        clearSessionHandler = clearSession;
+        sessionData.clearSessionHandler = clearSession;
 
         // Create socket
-        socket = makeWASocket({
+        const socket = makeWASocket({
             version,
             logger: baileysLogger,
             auth: {
                 creds: state.creds,
                 keys: makeCacheableSignalKeyStore(state.keys, baileysLogger)
             },
-            printQRInTerminal: false, // We'll handle QR manually
+            printQRInTerminal: false,
             generateHighQualityLinkPreview: true,
-            // Browser identification
             browser: ['WhatsApp Gateway', 'Chrome', '120.0.0'],
-            // Link preview settings
-            getMessage: async (key) => {
-                // If you have message history, return it here
-                return { conversation: 'Message not found' };
-            }
+            getMessage: async (key) => ({ conversation: 'Message not found' })
         });
+
+        sessionData.socket = socket;
 
         // ============================================
         // Connection Event Handlers
         // ============================================
 
-        // Handle connection updates
         socket.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            // Store QR code for API access (frontend only)
+            // Handle QR code
             if (qr) {
-                connectionState.qr = qr;
-                connectionState.connection = 'waiting_qr';
-
-                console.log('📱 QR Code generated - scan via frontend at /api/whatsapp/qr');
+                sessionData.connectionState.qr = qr;
+                sessionData.connectionState.connection = 'waiting_qr';
+                console.log(`📱 [${sessionId}] QR Code generated - Waiting for scan...`);
             }
 
-            // Connection state changed
+            // Handle Connection State
             if (connection) {
-                connectionState.connection = connection;
+                sessionData.connectionState.connection = connection;
 
                 if (connection === 'open') {
-                    connectionState.qr = null;
-                    connectionState.phoneNumber = socket.user?.id?.split(':')[0] || null;
+                    sessionData.connectionState.qr = null;
+                    sessionData.connectionState.phoneNumber = socket.user?.id?.split(':')[0] || null;
 
-                    console.log('\n✅ Connected successfully!');
-                    console.log(`📞 Phone: ${connectionState.phoneNumber}`);
-                    console.log(`👤 Name: ${socket.user?.name || 'Unknown'}\n`);
+                    console.log(`\n✅ [${sessionId}] Connected! Phone: ${sessionData.connectionState.phoneNumber}\n`);
                 }
 
                 if (connection === 'close') {
-                    connectionState.qr = null;
-
+                    sessionData.connectionState.qr = null;
                     const statusCode = lastDisconnect?.error?.output?.statusCode;
                     const reason = DisconnectReason[statusCode] || 'Unknown';
 
-                    console.log(`\n❌ Disconnected: ${reason} (${statusCode})`);
+                    console.log(`\n❌ [${sessionId}] Disconnection: ${reason} (${statusCode})`);
 
-                    // Smart reconnection logic
                     const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
                     if (shouldReconnect) {
-                        console.log('🔄 Reconnecting in 10 seconds...\n');
-                        setTimeout(() => {
-                            connectToWhatsApp();
-                        }, 10000);
+                        console.log(`🔄 [${sessionId}] Reconnecting in 10s...`);
+                        setTimeout(() => connectToWhatsApp(sessionId), 10000);
                     } else {
-                        console.log('👋 Session ended. Scan QR code to login again.\n');
-                        // Clear session if logged out
-                        if (clearSession) {
-                            await clearSession();
-                        }
-                        // Restart to show new QR (slower to avoid fast reload)
-                        setTimeout(() => {
-                            connectToWhatsApp();
-                        }, 5000);
+                        console.log(`👋 [${sessionId}] Logged out. Session data will be cleared.`);
+                        if (clearSession) await clearSession();
+                        sessions.delete(sessionId);
                     }
                 }
             }
         });
 
-        // Handle credential updates (save to Supabase)
         socket.ev.on('creds.update', saveCreds);
 
-        // Handle messages (for logging/debugging)
         socket.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type === 'notify') {
                 for (const msg of messages) {
                     if (!msg.key.fromMe) {
-                        const sender = msg.key.remoteJid?.replace('@s.whatsapp.net', '') || 'Unknown';
-                        const content = msg.message?.conversation ||
-                            msg.message?.extendedTextMessage?.text ||
-                            '[Media/Other]';
-                        console.log(`📩 New message from ${sender}: ${content.substring(0, 50)}...`);
+                        const sender = msg.key.remoteJid?.split('@')[0];
+                        console.log(`📩 [${sessionId}] Message from ${sender}`);
                     }
                 }
             }
         });
 
-        // ============================================
-        // Keep-Alive Mechanism
-        // ============================================
-        // Send presence update periodically to prevent disconnection
-        setInterval(() => {
-            if (socket && connectionState.connection === 'open') {
-                socket.sendPresenceUpdate('available');
-            }
-        }, 30000); // Every 30 seconds
-
     } catch (error) {
-        console.error('❌ Error connecting to WhatsApp:', error);
-        console.log('🔄 Retrying in 5 seconds...\n');
-        setTimeout(connectToWhatsApp, 5000);
+        console.error(`❌ [${sessionId}] Critical Connection Error:`, error.message);
+        // Retry connection after a delay
+        setTimeout(() => connectToWhatsApp(sessionId), 10000);
     }
 }
+
+// ============================================
+// Keep-Alive Mechanism
+// ============================================
+// Send presence update periodically to prevent disconnection for all sessions
+setInterval(() => {
+    sessions.forEach(({ socket, connectionState }, sessionId) => {
+        if (socket && connectionState.connection === 'open') {
+            try {
+                socket.sendPresenceUpdate('available');
+            } catch (err) {
+                console.error(`⚠️ [${sessionId}] Keep-alive error:`, err.message);
+            }
+        }
+    });
+}, 30000); // Every 30 seconds
 
 // ============================================
 // Start Server
@@ -282,7 +310,7 @@ async function startServer() {
     // Start Express server
     app.listen(PORT, () => {
         console.log(`\n${'='.repeat(50)}`);
-        console.log(`  WhatsApp Gateway API`);
+        console.log(`  WhatsApp Gateway API (Multi-Session)`);
         console.log(`${'='.repeat(50)}`);
         console.log(`  🌐 Server: http://localhost:${PORT}`);
         console.log(`  📡 API: http://localhost:${PORT}/api/whatsapp`);
@@ -290,26 +318,25 @@ async function startServer() {
         console.log(`${'='.repeat(50)}\n`);
     });
 
-    // Start WhatsApp connection
-    await connectToWhatsApp();
+    // Start initial WhatsApp connection (optional, or wait for API call)
+    const initialSession = process.env.SESSION_ID || 'main-session';
+    await connectToWhatsApp(initialSession);
 }
 
 // Handle graceful shutdown
-process.on('SIGINT', async () => {
-    console.log('\n👋 Shutting down gracefully...');
-    if (socket) {
-        socket.end();
+const shutdown = async (signal) => {
+    console.log(`\n👋 Received ${signal}, shutting down all sessions...`);
+    for (const [sessionId, sessionData] of sessions) {
+        if (sessionData.socket) {
+            console.log(`🔌 Closing session: ${sessionId}`);
+            sessionData.socket.end();
+        }
     }
     process.exit(0);
-});
+};
 
-process.on('SIGTERM', async () => {
-    console.log('\n👋 Received SIGTERM, shutting down...');
-    if (socket) {
-        socket.end();
-    }
-    process.exit(0);
-});
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 // Start the server
 startServer();
