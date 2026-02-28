@@ -8,7 +8,7 @@ class HistoryHelper {
     constructor() {
         this.useProduction = process.env.USE_PRODUCTION_DB === 'true';
         this.tableName = this.useProduction ? 'wa_chat_history' : 'wa_chat_history_local';
-        this.maxHistory = 20; // Keep last 20 messages
+        this.maxHistory = 100; // Keep last 100 messages for full view
         this.proactiveLimit = 7; // Max nudges per user
     }
 
@@ -67,6 +67,7 @@ class HistoryHelper {
                 role: newMessage.role,
                 content: newMessage.content,
                 is_proactive: newMessage.isProactive || false,
+                latency: newMessage.latency || null, // in milliseconds
                 timestamp: new Date().toISOString()
             });
 
@@ -119,7 +120,7 @@ class HistoryHelper {
         try {
             const { data, error } = await supabase
                 .from(this.tableName)
-                .select('jid, push_name, msg_count, last_active')
+                .select('jid, push_name, msg_count, last_active, history')
                 .order('last_active', { ascending: false });
 
             if (error) {
@@ -127,7 +128,19 @@ class HistoryHelper {
                 return [];
             }
 
-            return data || [];
+            // Map data to include latest latency from history
+            return (data || []).map(chat => {
+                const history = chat.history || [];
+                const lastModelMsg = [...history].reverse().find(h => h.role === 'model');
+
+                return {
+                    jid: chat.jid,
+                    push_name: chat.push_name,
+                    msg_count: chat.msg_count,
+                    last_active: chat.last_active,
+                    last_latency: lastModelMsg?.latency || null
+                };
+            });
         } catch (err) {
             console.error(`❌ [History Error] Stats exception:`, err.message);
             return [];

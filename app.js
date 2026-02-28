@@ -307,9 +307,23 @@ async function connectToWhatsApp(sessionId = 'main-session') {
 }
 
 // ============================================
-// Keep-Alive Mechanism
+// Proactive & Auto-Healing Mechanisms
 // ============================================
-// Send presence update periodically to prevent disconnection for all sessions
+
+// Auto-healing: Restart dead sessions every 5 mins
+setInterval(() => {
+    sessions.forEach((session, sessionId) => {
+        if (session.connectionState.connection === 'close' ||
+            session.connectionState.connection === 'disconnected') {
+            console.log(`🩹 [Auto-Healing] Attempting to revive dead session: ${sessionId}`);
+            connectToWhatsApp(sessionId).catch(e =>
+                console.error(`❌ [Auto-Healing] Failed to revive ${sessionId}:`, e.message)
+            );
+        }
+    });
+}, 5 * 60 * 1000);
+
+// Send presence update periodically
 setInterval(() => {
     sessions.forEach(({ socket, connectionState }, sessionId) => {
         if (socket && connectionState.connection === 'open') {

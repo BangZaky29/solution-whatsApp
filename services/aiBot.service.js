@@ -2,6 +2,7 @@ const geminiHelper = require('../helpers/gemini.helper');
 const whatsappService = require('./whatsapp.service');
 const historyHelper = require('../helpers/history.helper');
 const supabase = require('../helpers/supabase.helper');
+const configHelper = require('../helpers/config.helper');
 
 /**
  * AI Bot Service
@@ -9,13 +10,34 @@ const supabase = require('../helpers/supabase.helper');
  */
 class AIBotService {
     constructor() {
-        const rawTarget = process.env.AI_BOT_TARGET_NUMBER || '6281995770190';
-        // Allow multiple targets separated by comma (phone numbers or LID IDs)
-        this.targetNumbers = rawTarget.split(',').map(n => n.trim().replace(/\D/g, ''));
         this.botSessionId = 'wa-bot-ai';
+
+        // Initial config state
+        this.config = {
+            systemPrompt: "" // Loaded from DB asynchronously
+        };
+
+        this.init();
+
         console.log(`🤖 [AI-Bot] Service initialized.`);
         console.log(`   > Session: ${this.botSessionId}`);
-        console.log(`   > Targets: ${this.targetNumbers.join(', ')}`);
+    }
+
+    async init() {
+        this.config.systemPrompt = await configHelper.getSystemPrompt();
+        console.log(`🤖 [AI-Bot] Loaded prompt from DB: ${this.config.systemPrompt.substring(0, 30)}...`);
+    }
+
+    /**
+     * Update runtime configuration
+     * @param {object} newConfig 
+     */
+    async updateConfig(newConfig) {
+        if (newConfig.systemPrompt) {
+            this.config.systemPrompt = newConfig.systemPrompt;
+            await configHelper.updateSystemPrompt(newConfig.systemPrompt);
+            console.log(`⚙️ [AI-Bot] System prompt updated and saved to DB.`);
+        }
     }
 
     /**
@@ -43,6 +65,13 @@ class AIBotService {
 
         // Clean number for comparison (remove any non-digits)
         const cleanSender = senderId.replace(/\D/g, '');
+
+        // CHECK IF ALLOWED
+        const isAllowed = await configHelper.isContactAllowed(remoteJid);
+        if (!isAllowed) {
+            console.log(`🚫 [AI-Bot] Sender ${cleanSender} is not in whitelist, ignored.`);
+            return;
+        }
 
         // Get message text
         const messageText = msg.message?.conversation ||
@@ -80,7 +109,9 @@ class AIBotService {
 
         // SPECIAL PERSON LOGIC: Pacar Zaky
         const isPacarZaky = cleanSender.includes('6288293473765');
-        let systemPrompt = process.env.AI_BOT_SYSTEM_PROMPT || "Anda adalah asisten AI ramah.";
+
+        // Refresh prompt from DB to ensure latest
+        let systemPrompt = await configHelper.getSystemPrompt();
 
         if (isPacarZaky) {
             console.log(`💖 [AI-Bot] Special person detected! Applying sweet persona.`);
@@ -94,20 +125,32 @@ class AIBotService {
         // Send 'typing' status
         await socket.sendPresenceUpdate('composing', remoteJid);
 
+        const startTime = Date.now();
+        await configHelper.incrementStat('requests');
+
         try {
             // Generate AI response with custom prompt and history context
             console.log(`🤖 [AI-Bot] Fetching Gemini response...`);
             const aiResponse = await geminiHelper.generateResponse(fullMessageText, formattedHistory, systemPrompt);
-            console.log(`🤖 [AI-Bot] Gemini responded (${aiResponse.length} chars)`);
+
+            const endTime = Date.now();
+            const latency = endTime - startTime;
+
+            console.log(`🤖 [AI-Bot] Gemini responded (${aiResponse.length} chars) in ${latency}ms`);
 
             // Send response - Use remoteJid to preserve @lid or @s.whatsapp.net format
             await whatsappService.sendTextMessage(socket, remoteJid, aiResponse);
             console.log(`✅ [AI-Bot] Sent AI response to ${cleanSender}`);
+            await configHelper.incrementStat('responses');
 
             // PERSISTENCE: Save both messages to history
             // Save fullMessageText for user so history has the context too
             await historyHelper.saveMessage(remoteJid, pushName, { role: 'user', content: fullMessageText });
-            await historyHelper.saveMessage(remoteJid, pushName, { role: 'model', content: aiResponse });
+            await historyHelper.saveMessage(remoteJid, pushName, {
+                role: 'model',
+                content: aiResponse,
+                latency: latency
+            });
 
         } catch (error) {
             console.error(`❌ [AI-Bot] Execution failed:`, error.message);

@@ -17,6 +17,9 @@ const router = express.Router();
  */
 function createWhatsAppRoutes(getSession, connectToWhatsApp) {
     const whatsappService = require('../services/whatsapp.service');
+    const configHelper = require('../helpers/config.helper');
+    const historyHelper = require('../helpers/history.helper');
+    const supabase = require('../helpers/supabase.helper');
 
     /**
      * Middleware to validate session
@@ -348,20 +351,170 @@ function createWhatsAppRoutes(getSession, connectToWhatsApp) {
     router.get('/stats/history', async (req, res) => {
         try {
             const historyHelper = require('../helpers/history.helper');
-            const stats = await historyHelper.getAllChatStats();
+            const configHelper = require('../helpers/config.helper');
+            const chats = await historyHelper.getAllChatStats();
+            const globalStats = await configHelper.getSetting('global_stats') || { requests: 0, responses: 0 };
 
             res.json({
                 success: true,
-                count: stats.length,
-                stats: stats
+                stats: chats,
+                global: globalStats
             });
         } catch (error) {
-            console.error('Error getting stats:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to get stats'
-            });
+            res.status(500).json({ success: false, error: error.message });
         }
+    });
+
+    // PROMPT LIBRARY ROUTES
+    router.get('/config/prompts', async (req, res) => {
+        try {
+            const prompts = await configHelper.getAllPrompts();
+            console.log(`🔍 [API] Fetched ${prompts.length} prompts from DB`);
+            res.json({ success: true, prompts });
+        } catch (error) {
+            console.error('❌ [API] Error fetching prompts:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.post('/config/prompts', async (req, res) => {
+        try {
+            const { name, content, isActive } = req.body;
+            const { data, error } = await supabase.from('wa_bot_prompts').upsert({ name, content, is_active: isActive });
+            if (error) throw error;
+            res.json({ success: true, data });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.post('/config/prompts/activate', async (req, res) => {
+        try {
+            const { id } = req.body;
+            await configHelper.setActivePrompt(id);
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.put('/config/prompts/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { name, content } = req.body;
+            const { error } = await supabase.from('wa_bot_prompts').update({ name, content }).eq('id', id);
+            if (error) throw error;
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.delete('/config/prompts/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { error } = await supabase.from('wa_bot_prompts').delete().eq('id', id);
+            if (error) throw error;
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    // CONTACTS LIBRARY ROUTES
+    router.get('/config/contacts', async (req, res) => {
+        try {
+            const contacts = await configHelper.getAllowedContacts();
+            const mode = await configHelper.getTargetMode();
+            console.log(`🔍 [API] Fetched ${contacts.length} contacts, Mode: ${mode}`);
+            res.json({ success: true, contacts, mode });
+        } catch (error) {
+            console.error('❌ [API] Error fetching contacts:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.post('/config/contacts', async (req, res) => {
+        try {
+            const { jid, name } = req.body;
+            await configHelper.addContact(jid, name);
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.put('/config/contacts/:jid', async (req, res) => {
+        try {
+            const { jid } = req.params;
+            const { name } = req.body;
+            const { error } = await supabase.from('wa_bot_contacts').update({ push_name: name }).eq('jid', jid);
+            if (error) throw error;
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.delete('/config/contacts/:jid', async (req, res) => {
+        try {
+            await configHelper.removeContact(req.params.jid);
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.post('/config/target-mode', async (req, res) => {
+        try {
+            const { mode } = req.body;
+            await configHelper.updateSetting('target_mode', { mode });
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    // HISTORY PREVIEW ROUTE
+    router.get('/history/:jid', async (req, res) => {
+        try {
+            const { jid } = req.params;
+            const history = await historyHelper.getHistory(jid);
+            res.json({ success: true, history });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    /**
+     * GET /api/whatsapp/config/prompt
+     * Get current AI system prompt
+     */
+    router.get('/config/prompt', (req, res) => {
+        const aiBotService = require('../services/aiBot.service');
+        res.json({
+            success: true,
+            systemPrompt: aiBotService.config.systemPrompt
+        });
+    });
+
+    /**
+     * POST /api/whatsapp/config/prompt
+     * Update AI system prompt
+     */
+    router.post('/config/prompt', (req, res) => {
+        const { systemPrompt } = req.body;
+        if (!systemPrompt) {
+            return res.status(400).json({ success: false, error: 'systemPrompt is required' });
+        }
+
+        const aiBotService = require('../services/aiBot.service');
+        aiBotService.updateConfig({ systemPrompt });
+
+        res.json({
+            success: true,
+            message: 'System prompt updated successfully'
+        });
     });
 
     return router;
