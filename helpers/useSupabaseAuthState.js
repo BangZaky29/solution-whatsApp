@@ -18,6 +18,13 @@
  * - Convert back to actual Buffers when reading
  */
 
+// Baileys imports
+const {
+    initAuthCreds,
+    BufferJSON,
+    proto
+} = require('@whiskeysockets/baileys');
+
 const supabase = require('./supabase.helper');
 
 /**
