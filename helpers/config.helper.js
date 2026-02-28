@@ -9,6 +9,78 @@ class ConfigHelper {
         this.settingsTable = 'wa_bot_settings';
         this.promptsTable = 'wa_bot_prompts';
         this.contactsTable = 'wa_bot_contacts';
+        this.apiKeysTable = 'wa_bot_api_keys';
+    }
+
+    /**
+     * API KEYS MANAGEMENT
+     */
+    async getGeminiApiKey() {
+        try {
+            const { data, error } = await supabase
+                .from(this.apiKeysTable)
+                .select('key_value')
+                .eq('is_active', true)
+                .limit(1)
+                .single();
+
+            if (error) {
+                if (error.code !== 'PGRST116') { // Not found is fine
+                    console.error(`❌ [ConfigHelper] Error getting API key:`, error.message);
+                }
+                return process.env.GEMINI_API_KEY || null;
+            }
+
+            return data?.key_value || process.env.GEMINI_API_KEY || null;
+        } catch (err) {
+            console.error(`❌ [ConfigHelper] Catch error getting API key:`, err.message);
+            return process.env.GEMINI_API_KEY || null;
+        }
+    }
+
+    async getAllApiKeys() {
+        try {
+            const { data, error } = await supabase
+                .from(this.apiKeysTable)
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error(`❌ [ConfigHelper] Error fetching all API keys:`, error.message);
+                throw error;
+            }
+
+            console.log(`🔍 [ConfigHelper] DB returned ${data?.length || 0} API keys from ${this.apiKeysTable}`);
+            return data || [];
+        } catch (err) {
+            console.error(`❌ [ConfigHelper] Catch error fetching API keys:`, err.message);
+            return [];
+        }
+    }
+
+    async addApiKey(name, key) {
+        return await supabase.from(this.apiKeysTable).insert({
+            name,
+            key_value: key,
+            is_active: false
+        });
+    }
+
+    async updateApiKey(id, name, key) {
+        const updateData = { name };
+        if (key) updateData.key_value = key;
+        return await supabase.from(this.apiKeysTable).update(updateData).eq('id', id);
+    }
+
+    async removeApiKey(id) {
+        return await supabase.from(this.apiKeysTable).delete().eq('id', id);
+    }
+
+    async activateApiKey(id) {
+        // Deactivate all
+        await supabase.from(this.apiKeysTable).update({ is_active: false }).neq('id', id);
+        // Activate this one
+        return await supabase.from(this.apiKeysTable).update({ is_active: true }).eq('id', id);
     }
 
     /**

@@ -7,15 +7,9 @@
  */
 
 const express = require('express');
-const router = express.Router();
 
-/**
- * Factory function to create routes with socket access
- * @param {function} getSocket - Function to get current socket instance
- * @param {function} getConnectionState - Function to get connection state
- * @param {function} getClearSession - Function to get clearSession handler
- */
 function createWhatsAppRoutes(getSession, connectToWhatsApp) {
+    const router = express.Router();
     const whatsappService = require('../services/whatsapp.service');
     const configHelper = require('../helpers/config.helper');
     const historyHelper = require('../helpers/history.helper');
@@ -515,6 +509,59 @@ function createWhatsAppRoutes(getSession, connectToWhatsApp) {
             success: true,
             message: 'System prompt updated successfully'
         });
+    });
+
+    // API KEYS CONFIGURATION
+    router.get('/config/keys', async (req, res) => {
+        try {
+            const keys = await configHelper.getAllApiKeys();
+            console.log(`🔍 [API] Fetched ${keys.length} API keys from DB`);
+            res.json({ success: true, keys });
+        } catch (error) {
+            console.error('❌ [API] Error fetching API keys:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.post('/config/keys', async (req, res) => {
+        try {
+            const { name, key } = req.body;
+            console.log(`➕ [API] Adding new API key: ${name}`);
+            await configHelper.addApiKey(name, key);
+            res.json({ success: true });
+        } catch (error) {
+            console.error('❌ [API] Error adding API key:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.put('/config/keys/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { name, key } = req.body;
+            await configHelper.updateApiKey(id, name, key);
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.delete('/config/keys/:id', async (req, res) => {
+        try {
+            await configHelper.removeApiKey(req.params.id);
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.patch('/config/keys/:id/activate', async (req, res) => {
+        try {
+            await configHelper.activateApiKey(req.params.id);
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
     });
 
     return router;

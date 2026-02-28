@@ -129,9 +129,17 @@ class AIBotService {
         await configHelper.incrementStat('requests');
 
         try {
-            // Generate AI response with custom prompt and history context
-            console.log(`🤖 [AI-Bot] Fetching Gemini response...`);
-            const aiResponse = await geminiHelper.generateResponse(fullMessageText, formattedHistory, systemPrompt);
+            // Generate AI response with dynamic API key from DB
+            const activeKey = await configHelper.getGeminiApiKey();
+
+            console.log(`🤖 [AI-Bot] Fetching Gemini response (Key: ${activeKey ? activeKey.substring(0, 8) + '...' : 'NONE'})...`);
+
+            const aiResponse = await geminiHelper.generateResponse(
+                fullMessageText,
+                formattedHistory,
+                systemPrompt,
+                activeKey
+            );
 
             const endTime = Date.now();
             const latency = endTime - startTime;

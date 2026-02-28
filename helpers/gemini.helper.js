@@ -16,7 +16,7 @@ class GeminiHelper {
 
         // STABLE CONFIG: Menggunakan gemini-1.5-flash dengan v1beta untuk fitur gratis yang stabil
         this.model = this.genAI.getGenerativeModel(
-            { model: "gemini-1.5-flash" },
+            { model: "gemini-2.5-flash" },
             { apiVersion: 'v1beta' }
         );
 
@@ -28,14 +28,24 @@ class GeminiHelper {
      * @param {string} userMessage - Message from customer
      * @param {string} history - Optional conversation history
      * @param {string} customPrompt - Optional custom system prompt
+     * @param {string} apiKey - Optional API key (overrides process.env)
      * @returns {Promise<string>} - AI generated response
      */
-    async generateResponse(userMessage, history = "", customPrompt = null) {
-        if (!process.env.GEMINI_API_KEY) {
+    async generateResponse(userMessage, history = "", customPrompt = null, apiKey = null) {
+        const finalApiKey = apiKey || process.env.GEMINI_API_KEY;
+
+        if (!finalApiKey) {
             return "Maaf kak, sistem AI belum dikonfigurasi (API Key kosong).";
         }
 
         try {
+            // Create a temporary model instance if a specific key is provided or if we want to ensure freshness
+            const client = new GoogleGenerativeAI(finalApiKey);
+            const model = client.getGenerativeModel(
+                { model: "gemini-1.5-flash" },
+                { apiVersion: 'v1beta' }
+            );
+
             const finalSystemPrompt = customPrompt || this.systemPrompt;
 
             const promptParts = [
@@ -50,7 +60,7 @@ class GeminiHelper {
 
             const finalPrompt = promptParts.join('\n\n');
 
-            const result = await this.model.generateContent(finalPrompt);
+            const result = await model.generateContent(finalPrompt);
             const response = await result.response;
             const text = response.text();
 
@@ -67,6 +77,8 @@ class GeminiHelper {
                 return "Sorry bro Gue lagi capek Nnnti lagi chattanye yak..";
             } else if (error.message.includes('429')) {
                 return "Sorry bro Gue lagi capek Nnnti lagi chattanye yak, besok lagi aja kita chattannya..";
+            } else if (error.message.includes('API_KEY_INVALID') || error.message.includes('API key not found')) {
+                return "Waduh, API Key Gemini kayaknya salah atau udah mati nih. Cek dashboard ya!";
             }
 
             return "Sorry bro Gue bingung lu ngomong apa, coba ulang..";
