@@ -17,6 +17,20 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const pino = require('pino');
+const fs = require('fs');
+const path = require('path');
+
+// Simple file logger for debugging
+const logFile = path.join(__dirname, 'debug.log');
+const logToFile = (msg) => {
+    try {
+        const entry = `[${new Date().toISOString()}] ${msg}\n`;
+        fs.appendFileSync(logFile, entry);
+        console.log(msg);
+    } catch (e) { }
+};
+
+logToFile('--- Server Started ---');
 
 // Baileys imports
 const {
@@ -263,14 +277,21 @@ async function connectToWhatsApp(sessionId = 'main-session') {
         socket.ev.on('creds.update', saveCreds);
 
         socket.ev.on('messages.upsert', async ({ messages, type }) => {
+            logToFile(`📩 [${sessionId}] messages.upsert type=${type}, count=${messages.length}`);
+
             if (type === 'notify') {
                 const aiBotService = require('./services/aiBot.service');
                 for (const msg of messages) {
-                    if (!msg.key.fromMe) {
+                    const fromMe = msg.key.fromMe;
+                    const remoteJid = msg.key.remoteJid;
+                    logToFile(`   > Msg from ${remoteJid}, fromMe=${fromMe}`);
+
+                    if (!fromMe) {
                         try {
                             await aiBotService.handleIncomingMessage(sessionId, socket, msg);
                         } catch (err) {
                             console.error(`❌ [${sessionId}] AI Bot Error:`, err.message);
+                            logToFile(`❌ [${sessionId}] AI Bot Error: ${err.message}`);
                         }
                     }
                 }
@@ -301,6 +322,24 @@ setInterval(() => {
 }, 30000); // Every 30 seconds
 
 // ============================================
+// Proactive AI Mechanism
+// ============================================
+// Check for nudge opportunities every 15 minutes
+setInterval(async () => {
+    const aiBotSession = sessions.get('wa-bot-ai');
+    if (aiBotSession && aiBotSession.socket && aiBotSession.connectionState.connection === 'open') {
+        const aiBotService = require('./services/aiBot.service');
+        await aiBotService.checkAndSendProactiveMessage(aiBotSession.socket);
+    }
+}, 15 * 60 * 1000);
+
+// 24h Storage Cleanup Mechanism
+setInterval(async () => {
+    const historyHelper = require('./helpers/history.helper');
+    await historyHelper.clearAllHistory();
+}, 24 * 60 * 60 * 1000); // Every 24 hours
+
+// ============================================
 // Start Server
 // ============================================
 
@@ -316,6 +355,7 @@ async function startServer() {
     app.listen(PORT, () => {
         console.log(`\n${'='.repeat(50)}`);
         console.log(`  WhatsApp Gateway API (Multi-Session)`);
+        console.log(`  Targets: ${process.env.AI_BOT_TARGET_NUMBER}`);
         console.log(`${'='.repeat(50)}`);
         console.log(`  🌐 Server: http://localhost:${PORT}`);
         console.log(`  📡 API: http://localhost:${PORT}/api/whatsapp`);
@@ -323,22 +363,41 @@ async function startServer() {
         console.log(`${'='.repeat(50)}\n`);
     });
 
-    // Start initial WhatsApp connection (optional, or wait for API call)
-    const initialSession = process.env.SESSION_ID || 'main-session';
-    await connectToWhatsApp(initialSession);
+    // Start initial WhatsApp connections in parallel
+    const initialSessions = [
+        process.env.SESSION_ID || 'main-session',
+        'wa-bot-ai'
+    ];
+
+    await Promise.all(
+        initialSessions.map(sessionId =>
+            connectToWhatsApp(sessionId).catch(err =>
+                global.debugLog(`❌ Auto-start failed for ${sessionId}: ${err.message}`)
+            )
+        )
+    );
 }
 
-// Handle graceful shutdown
+// Graceful shutdown
 const shutdown = async (signal) => {
     console.log(`\n👋 Received ${signal}, shutting down all sessions...`);
     for (const [sessionId, sessionData] of sessions) {
         if (sessionData.socket) {
-            console.log(`🔌 Closing session: ${sessionId}`);
             sessionData.socket.end();
         }
     }
     process.exit(0);
 };
+
+// Crash handlers
+process.on('uncaughtException', (err) => {
+    global.debugLog(`💥 CRITICAL ERROR (uncaughtException): ${err.message}\n${err.stack}`);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    global.debugLog(`💥 UNHANDLED REJECTION: ${reason}`);
+});
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));

@@ -18,15 +18,7 @@
  * - Convert back to actual Buffers when reading
  */
 
-const { createClient } = require('@supabase/supabase-js');
-const { proto } = require('@whiskeysockets/baileys');
-const { initAuthCreds } = require('@whiskeysockets/baileys');
-
-// Initialize Supabase client
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
-);
+const supabase = require('./supabase.helper');
 
 /**
  * Recursively converts Buffer objects to a serializable format

@@ -25,7 +25,7 @@ function createWhatsAppRoutes(getSession, connectToWhatsApp) {
         const { sessionId } = req.params;
         const session = getSession(sessionId);
 
-        if (!session && req.path !== `/${sessionId}/init`) {
+        if (!session && !req.path.endsWith('/init')) {
             return res.status(404).json({
                 success: false,
                 error: `Session '${sessionId}' not found. Please initialize first at /api/whatsapp/${sessionId}/init (POST)`
@@ -338,6 +338,29 @@ function createWhatsAppRoutes(getSession, connectToWhatsApp) {
         } catch (error) {
             console.error('Error in payment-confirmation:', error);
             res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    });
+
+    /**
+     * GET /api/whatsapp/stats
+     * Get all chat statistics for dashboard
+     */
+    router.get('/stats/history', async (req, res) => {
+        try {
+            const historyHelper = require('../helpers/history.helper');
+            const stats = await historyHelper.getAllChatStats();
+
+            res.json({
+                success: true,
+                count: stats.length,
+                stats: stats
+            });
+        } catch (error) {
+            console.error('Error getting stats:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to get stats'
+            });
         }
     });
 

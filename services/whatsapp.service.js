@@ -13,6 +13,11 @@
  * @returns {string} - Formatted number with @s.whatsapp.net suffix
  */
 function formatPhoneNumber(number) {
+    // If it's already a full JID (contains @), return as is
+    if (number.includes('@')) {
+        return number;
+    }
+
     // Remove all non-numeric characters
     let cleaned = number.replace(/\D/g, '');
 
@@ -95,8 +100,8 @@ async function sendTextMessage(socket, number, message) {
             return { success: false, error: messageValidation.message };
         }
 
-        // Format the number
-        const jid = formatPhoneNumber(number);
+        // Format the number (Preserve full JIDs like @lid)
+        const jid = number.includes('@') ? number : formatPhoneNumber(number);
 
         // Check if socket is connected
         if (!socket || !socket.user) {
