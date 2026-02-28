@@ -264,10 +264,14 @@ async function connectToWhatsApp(sessionId = 'main-session') {
 
         socket.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type === 'notify') {
+                const aiBotService = require('./services/aiBot.service');
                 for (const msg of messages) {
                     if (!msg.key.fromMe) {
-                        const sender = msg.key.remoteJid?.split('@')[0];
-                        console.log(`📩 [${sessionId}] Message from ${sender}`);
+                        try {
+                            await aiBotService.handleIncomingMessage(sessionId, socket, msg);
+                        } catch (err) {
+                            console.error(`❌ [${sessionId}] AI Bot Error:`, err.message);
+                        }
                     }
                 }
             }
