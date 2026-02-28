@@ -78,7 +78,8 @@ app.use(cors({
     origin: [
         'https://admin-controller.nuansasolution.id',
         'https://nuansasolution.id',
-        'http://localhost:5173' // Untuk test lokal
+        'http://localhost:5173',
+        'http://localhost:5174'
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
