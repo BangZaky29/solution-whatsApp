@@ -1,22 +1,17 @@
-const supabase = require('./supabase.helper');
+const supabase = require('../../config/supabase');
 
 /**
- * History Helper
+ * History Service
  * Handles persistence of chat history in Supabase
  */
-class HistoryHelper {
+class HistoryService {
     constructor() {
         this.useProduction = process.env.USE_PRODUCTION_DB === 'true';
         this.tableName = this.useProduction ? 'wa_chat_history' : 'wa_chat_history_local';
-        this.maxHistory = 100; // Keep last 100 messages for full view
-        this.proactiveLimit = 7; // Max nudges per user
+        this.maxHistory = 100;
+        this.proactiveLimit = 7;
     }
 
-    /**
-     * Get chat history for a JID
-     * @param {string} jid - WhatsApp JID
-     * @returns {Promise<Array>} - Array of messages
-     */
     async getHistory(jid) {
         try {
             const { data, error } = await supabase
@@ -26,11 +21,10 @@ class HistoryHelper {
                 .single();
 
             if (error) {
-                if (error.code === 'PGRST116') return []; // Not found
+                if (error.code === 'PGRST116') return [];
                 console.error(`❌ [History Error] Fetch failed for ${jid}:`, error.message);
                 return [];
             }
-
             return data?.history || [];
         } catch (err) {
             console.error(`❌ [History Error] Exception:`, err.message);
@@ -38,15 +32,8 @@ class HistoryHelper {
         }
     }
 
-    /**
-     * Save/Update chat history
-     * @param {string} jid - WhatsApp JID
-     * @param {string} pushName - User's WhatsApp name
-     * @param {object} newMessage - { role: 'user'|'model', content: string }
-     */
     async saveMessage(jid, pushName, newMessage) {
         try {
-            // 1. Get current data
             const { data: existing } = await supabase
                 .from(this.tableName)
                 .select('history, msg_count, proactive_count')
@@ -57,17 +44,15 @@ class HistoryHelper {
             let msgCount = (existing?.msg_count || 0) + 1;
             let proactiveCount = existing?.proactive_count || 0;
 
-            // If bot sends message without user prompt (nudge)
             if (newMessage.isProactive) {
                 proactiveCount += 1;
             }
 
-            // 2. Append and Limit
             history.push({
                 role: newMessage.role,
                 content: newMessage.content,
                 is_proactive: newMessage.isProactive || false,
-                latency: newMessage.latency || null, // in milliseconds
+                latency: newMessage.latency || null,
                 timestamp: new Date().toISOString()
             });
 
@@ -75,7 +60,6 @@ class HistoryHelper {
                 history = history.slice(-this.maxHistory);
             }
 
-            // 3. Upsert
             const { error } = await supabase
                 .from(this.tableName)
                 .upsert({
@@ -98,11 +82,6 @@ class HistoryHelper {
         }
     }
 
-    /**
-     * Format history for Gemini multimodality / chat context
-     * @param {Array} history 
-     * @returns {string} - Formatted history string
-     */
     formatForPrompt(history) {
         if (!history || history.length === 0) return "";
 
@@ -112,10 +91,6 @@ class HistoryHelper {
         }).join('\n');
     }
 
-    /**
-     * Get statistics for all chats (for dashboard)
-     * @returns {Promise<Array>}
-     */
     async getAllChatStats() {
         try {
             const { data, error } = await supabase
@@ -128,7 +103,6 @@ class HistoryHelper {
                 return [];
             }
 
-            // Map data to include latest latency from history
             return (data || []).map(chat => {
                 const history = chat.history || [];
                 const lastModelMsg = [...history].reverse().find(h => h.role === 'model');
@@ -147,10 +121,6 @@ class HistoryHelper {
         }
     }
 
-    /**
-     * Clear all history (Storage Cleanup)
-     * Resets history to [] for all users every 24 hours
-     */
     async clearAllHistory() {
         try {
             console.log(`🧹 [History] Starting 24h storage cleanup...`);
@@ -160,7 +130,7 @@ class HistoryHelper {
                     history: [],
                     proactive_count: 0
                 })
-                .neq('jid', ''); // Target all records
+                .neq('jid', '');
 
             if (error) {
                 console.error(`❌ [History Error] Cleanup failed:`, error.message);
@@ -173,4 +143,4 @@ class HistoryHelper {
     }
 }
 
-module.exports = new HistoryHelper();
+module.exports = new HistoryService();
