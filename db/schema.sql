@@ -13,7 +13,7 @@ CREATE TABLE public.otp_codes (
 );
 CREATE TABLE public.user_sessions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid,
+  user_id uuid UNIQUE,
   wa_session_id text NOT NULL,
   is_primary boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
@@ -51,14 +51,20 @@ CREATE TABLE public.wa_bot_api_keys (
   key_value text NOT NULL,
   is_active boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT wa_bot_api_keys_pkey PRIMARY KEY (id)
+  model_name text DEFAULT 'gemini-2.5-flash'::text,
+  api_version text DEFAULT 'v1beta'::text,
+  user_id uuid,
+  CONSTRAINT wa_bot_api_keys_pkey PRIMARY KEY (id),
+  CONSTRAINT wa_bot_api_keys_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.wa_bot_contacts (
   jid text NOT NULL,
   push_name text,
   is_allowed boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT wa_bot_contacts_pkey PRIMARY KEY (jid)
+  user_id uuid NOT NULL,
+  CONSTRAINT wa_bot_contacts_pkey PRIMARY KEY (jid, user_id),
+  CONSTRAINT wa_bot_contacts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.wa_bot_prompts (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -66,7 +72,9 @@ CREATE TABLE public.wa_bot_prompts (
   content text NOT NULL,
   is_active boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT wa_bot_prompts_pkey PRIMARY KEY (id)
+  user_id uuid,
+  CONSTRAINT wa_bot_prompts_pkey PRIMARY KEY (id),
+  CONSTRAINT wa_bot_prompts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.wa_bot_settings (
   id text NOT NULL,
@@ -83,7 +91,9 @@ CREATE TABLE public.wa_chat_history (
   created_at timestamp with time zone DEFAULT now(),
   proactive_count integer DEFAULT 0,
   last_sender text,
-  CONSTRAINT wa_chat_history_pkey PRIMARY KEY (jid)
+  user_id uuid NOT NULL,
+  CONSTRAINT wa_chat_history_pkey PRIMARY KEY (jid, user_id),
+  CONSTRAINT wa_chat_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.wa_chat_history_local (
   jid text NOT NULL,
@@ -94,7 +104,9 @@ CREATE TABLE public.wa_chat_history_local (
   created_at timestamp with time zone DEFAULT now(),
   proactive_count integer DEFAULT 0,
   last_sender text,
-  CONSTRAINT wa_chat_history_local_pkey PRIMARY KEY (jid)
+  user_id uuid NOT NULL,
+  CONSTRAINT wa_chat_history_local_pkey PRIMARY KEY (jid, user_id),
+  CONSTRAINT wa_chat_history_local_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.wa_sessions (
   id text NOT NULL,

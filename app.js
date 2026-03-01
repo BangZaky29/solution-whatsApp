@@ -111,11 +111,16 @@ setInterval(() => {
 
 // Proactive AI Mechanism
 setInterval(async () => {
-    const aiBotSession = sessionManager.getSession('wa-bot-ai');
-    if (aiBotSession && aiBotSession.socket && aiBotSession.connectionState.connection === 'open') {
-        const aiBotService = require('./src/services/ai/aiBot.service');
-        await aiBotService.checkAndSendProactiveMessage(aiBotSession.socket);
-    }
+    const aiBotService = require('./src/services/ai/aiBot.service');
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    sessionManager.forEach(async (session, sessionId) => {
+        if ((UUID_REGEX.test(sessionId) || sessionId === 'wa-bot-ai') &&
+            session.socket &&
+            session.connectionState.connection === 'open') {
+            await aiBotService.checkAndSendProactiveMessage(sessionId, session.socket);
+        }
+    });
 }, 15 * 60 * 1000);
 
 // 24h Storage Cleanup
@@ -143,7 +148,6 @@ async function startServer() {
 
     const initialSessions = [
         process.env.SESSION_ID || 'main-session',
-        'wa-bot-ai',
         'CS-BOT'
     ];
 

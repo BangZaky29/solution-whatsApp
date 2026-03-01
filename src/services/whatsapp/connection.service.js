@@ -12,6 +12,10 @@ const path = require('path');
 
 // Use standard logger
 const { logger } = require('../../config/logger');
+const configService = require('../common/config.service');
+
+// UUID detection regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 class ConnectionService {
     async connect(sessionId = 'main-session') {
@@ -94,6 +98,12 @@ class ConnectionService {
                         sessionData.connectionState.phoneNumber = socket.user?.id?.split(':')[0] || null;
                         sessionData.connectionState.name = socket.user?.name || null;
                         console.log(`\n✅ [${sessionId}] Connected! Phone: ${sessionData.connectionState.phoneNumber}\n`);
+
+                        // PERSISTENCE: If sessionId is a UUID, record it in user_sessions
+                        if (UUID_REGEX.test(sessionId)) {
+                            console.log(`💾 [${sessionId}] Recording session for user in database...`);
+                            await configService.upsertUserSession(sessionId, socket.user.id);
+                        }
                     }
 
                     if (connection === 'close') {
@@ -110,6 +120,12 @@ class ConnectionService {
                             setTimeout(() => this.connect(sessionId), 10000);
                         } else {
                             console.log(`👋 [${sessionId}] Logged out. Session data will be cleared.`);
+
+                            // PERSISTENCE: Remove session from user_sessions on logout
+                            if (UUID_REGEX.test(sessionId)) {
+                                await configService.removeUserSession(sessionId);
+                            }
+
                             if (clearSession) await clearSession();
                             sessionManager.deleteSession(sessionId);
                         }

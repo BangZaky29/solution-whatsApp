@@ -4,6 +4,9 @@ const {
 } = require('@whiskeysockets/baileys');
 const supabase = require('../../config/supabase');
 
+// UUID detection regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function bufferToBase64(obj) {
     if (Buffer.isBuffer(obj)) {
         return { type: 'Buffer', data: obj.toString('base64') };
@@ -49,8 +52,10 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
     const USE_PRODUCTION = process.env.USE_PRODUCTION_DB === 'true';
 
     // Determine table based on session type for better isolation and scalability
+    const isAiSession = sessionId.startsWith('wa-bot-ai') || UUID_REGEX.test(sessionId);
+
     let TABLE_NAME;
-    if (sessionId.startsWith('wa-bot-ai')) {
+    if (isAiSession) {
         TABLE_NAME = USE_PRODUCTION ? 'wa_ai_sessions' : 'wa_ai_sessions_local';
     } else {
         TABLE_NAME = USE_PRODUCTION ? 'wa_sessions' : 'wa_sessions_local';

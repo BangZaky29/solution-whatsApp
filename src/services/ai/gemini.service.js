@@ -7,15 +7,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 class GeminiService {
     constructor() {
         const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-            console.error('❌ [Gemini Error]: GEMINI_API_KEY is missing in .env');
-        }
         this.genAI = new GoogleGenerativeAI(apiKey);
         this.systemPrompt = process.env.AI_BOT_SYSTEM_PROMPT || "Anda adalah asisten AI ramah.";
     }
 
-    async generateResponse(userMessage, history = "", customPrompt = null, apiKey = null) {
-        const finalApiKey = apiKey || process.env.GEMINI_API_KEY;
+    async generateResponse(userMessage, history = "", customPrompt = null, options = {}) {
+        const finalApiKey = options.apiKey || process.env.GEMINI_API_KEY;
 
         if (!finalApiKey) {
             return "Maaf kak, sistem AI belum dikonfigurasi (API Key kosong).";
@@ -24,8 +21,8 @@ class GeminiService {
         try {
             const client = new GoogleGenerativeAI(finalApiKey);
             const model = client.getGenerativeModel(
-                { model: "gemini-1.5-flash" },
-                { apiVersion: 'v1beta' }
+                { model: options.modelName || "gemini-1.5-flash" },
+                { apiVersion: options.apiVersion || 'v1beta' }
             );
 
             const finalSystemPrompt = customPrompt || this.systemPrompt;
