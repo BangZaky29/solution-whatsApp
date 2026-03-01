@@ -25,6 +25,18 @@ const initSession = async (req, res) => {
 const getStatus = (req, res) => {
     try {
         const { sessionId } = req.params;
+
+        if (!req.whatsappSession) {
+            return res.json({
+                success: true,
+                sessionId,
+                status: 'disconnected',
+                isConnected: false,
+                phoneNumber: null,
+                hasQR: false
+            });
+        }
+
         const { socket, connectionState } = req.whatsappSession;
         const status = whatsappService.getConnectionStatus(socket, connectionState);
 
@@ -47,6 +59,12 @@ const getStatus = (req, res) => {
  */
 const getQrCode = async (req, res) => {
     try {
+        if (!req.whatsappSession) {
+            return res.json({
+                success: false,
+                message: 'Session not initialized'
+            });
+        }
         const { connectionState } = req.whatsappSession;
 
         if (!connectionState.qr) {

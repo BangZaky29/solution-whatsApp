@@ -24,6 +24,7 @@ const connectionService = require('./src/services/whatsapp/connection.service');
 
 // Routes
 const whatsappRoutes = require('./src/routes/whatsapp.routes');
+const authRoutes = require('./src/routes/auth.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -72,6 +73,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/auth', authRoutes);
 
 // Error Handling
 app.use(notFoundHandler);

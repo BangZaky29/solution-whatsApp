@@ -49,6 +49,18 @@ class CSBotService {
             `Silakan ketik kata kunci di atas untuk bantuan.`;
         await whatsappService.sendTextMessage(socket, remoteJid, menu);
     }
+
+    async sendOTP(phone, message) {
+        const sessionManager = require('../whatsapp/session.manager');
+        const session = sessionManager.getSession(this.sessionId);
+
+        if (!session || !session.socket || session.connectionState.connection !== 'open') {
+            throw new Error('CS-BOT session is not active or connected');
+        }
+
+        const remoteJid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
+        return await whatsappService.sendTextMessage(session.socket, remoteJid, message);
+    }
 }
 
 module.exports = new CSBotService();

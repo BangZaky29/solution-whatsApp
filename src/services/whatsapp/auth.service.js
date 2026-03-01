@@ -85,6 +85,26 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         }
     };
 
+    const readDataBatch = async (type, ids) => {
+        try {
+            const keys = ids.map(id => getKey(type, id));
+            const { data, error } = await supabase.from(TABLE_NAME).select('id, value').in('id', keys);
+            if (error || !data) return {};
+
+            const results = {};
+            data.forEach(row => {
+                // Reconstruct the original ID by removing prefix `${sessionId}:${type}:`
+                const prefix = `${sessionId}:${type}:`;
+                const id = row.id.startsWith(prefix) ? row.id.substring(prefix.length) : row.id.split(':').pop();
+                results[id] = base64ToBuffer(row.value);
+            });
+            return results;
+        } catch (err) {
+            console.error(`⚠️ [${sessionId}] Batch read error for ${type}:`, err.message);
+            return {};
+        }
+    };
+
     const removeData = async (type, id) => {
         try {
             await supabase.from(TABLE_NAME).delete().eq('id', getKey(type, id));
@@ -102,22 +122,44 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         creds,
         keys: {
             get: async (type, ids) => {
-                const result = {};
-                for (const id of ids) {
-                    let data = await readData(type, id);
-                    if (data && type === 'app-state-sync-key') {
-                        data = proto.Message.AppStateSyncKeyData.fromObject(data);
+                const results = await readDataBatch(type, ids);
+
+                if (type === 'app-state-sync-key') {
+                    for (const id in results) {
+                        if (results[id]) {
+                            results[id] = proto.Message.AppStateSyncKeyData.fromObject(results[id]);
+                        }
                     }
-                    result[id] = data;
                 }
-                return result;
+                return results;
             },
             set: async (data) => {
+                const upserts = [];
+                const deletes = [];
+
                 for (const type in data) {
                     for (const id in data[type]) {
-                        if (data[type][id]) await writeData(type, id, data[type][id]);
-                        else await removeData(type, id);
+                        const key = getKey(type, id);
+                        if (data[type][id]) {
+                            upserts.push({
+                                id: key,
+                                value: bufferToBase64(data[type][id]),
+                                updated_at: new Date().toISOString()
+                            });
+                        } else {
+                            deletes.push(key);
+                        }
                     }
+                }
+
+                if (upserts.length > 0) {
+                    const { error } = await supabase.from(TABLE_NAME).upsert(upserts, { onConflict: 'id' });
+                    if (error) console.error(`❌ [${sessionId}] Batch upsert failed:`, error.message);
+                }
+
+                if (deletes.length > 0) {
+                    const { error } = await supabase.from(TABLE_NAME).delete().in('id', deletes);
+                    if (error) console.error(`❌ [${sessionId}] Batch delete failed:`, error.message);
                 }
             }
         }
