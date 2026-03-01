@@ -1,6 +1,36 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.otp_codes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  code text NOT NULL,
+  expires_at timestamp with time zone NOT NULL,
+  is_used boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT otp_codes_pkey PRIMARY KEY (id),
+  CONSTRAINT otp_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_sessions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  wa_session_id text NOT NULL,
+  is_primary boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_sessions_pkey PRIMARY KEY (id),
+  CONSTRAINT user_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  phone text NOT NULL UNIQUE,
+  email text,
+  full_name text,
+  password_hash text,
+  role text DEFAULT 'user'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  username text UNIQUE,
+  CONSTRAINT users_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.wa_ai_sessions (
   id text NOT NULL,
   value jsonb NOT NULL,
