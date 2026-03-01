@@ -130,17 +130,20 @@ class ConnectionService {
 
                 if (type === 'notify') {
                     const aiBotService = require('../ai/aiBot.service');
+                    const csBotService = require('../ai/csBot.service');
+
                     for (const msg of messages) {
                         const fromMe = msg.key.fromMe;
-                        const remoteJid = msg.key.remoteJid;
-                        logToFile(`   > Msg from ${remoteJid}, fromMe=${fromMe}`);
-
                         if (!fromMe) {
                             try {
-                                await aiBotService.handleIncomingMessage(sessionId, socket, msg);
+                                if (sessionId === 'wa-bot-ai') {
+                                    await aiBotService.handleIncomingMessage(sessionId, socket, msg);
+                                } else if (sessionId === 'CS-BOT') {
+                                    await csBotService.handleIncomingMessage(sessionId, socket, msg);
+                                }
                             } catch (err) {
-                                console.error(`❌ [${sessionId}] AI Bot Error:`, err.message);
-                                logToFile(`❌ [${sessionId}] AI Bot Error: ${err.message}`);
+                                console.error(`❌ [${sessionId}] Bot Error:`, err.message);
+                                logToFile(`❌ [${sessionId}] Bot Error: ${err.message}`);
                             }
                         }
                     }

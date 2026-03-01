@@ -141,7 +141,8 @@ async function startServer() {
 
     const initialSessions = [
         process.env.SESSION_ID || 'main-session',
-        'wa-bot-ai'
+        'wa-bot-ai',
+        'CS-BOT'
     ];
 
     for (const sessionId of initialSessions) {
