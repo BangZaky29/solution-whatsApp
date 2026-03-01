@@ -1,0 +1,22 @@
+[
+    {
+        "schemaname": "public",
+        "tablename": "wa_bot_contacts",
+        "policyname": "Allow all for backend",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "operation": "ALL",
+        "using_expression": "true",
+        "check_expression": null
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_bot_prompts",
+        "policyname": "Allow all for backend",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "operation": "ALL",
+        "using_expression": "true",
+        "check_expression": null
+    }
+]

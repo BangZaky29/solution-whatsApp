@@ -1,56 +1,65 @@
--- ============================================
--- WhatsApp Gateway - Supabase Session Schema
--- ============================================
--- This table stores Baileys authentication state
--- Run this in Supabase SQL Editor before starting the server
-
--- Create the wa_sessions table
-CREATE TABLE IF NOT EXISTS wa_sessions (
-    -- Key identifier (e.g., 'creds', 'app-state-sync-key-xxx', 'pre-key-1')
-    id TEXT PRIMARY KEY,
-    
-    -- Serialized value as JSONB
-    -- Note: Buffer objects are converted to { type: 'Buffer', data: '<base64>' }
-    value JSONB NOT NULL,
-    
-    -- Timestamps
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.wa_bot_api_keys (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  key_value text NOT NULL,
+  is_active boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_bot_api_keys_pkey PRIMARY KEY (id)
 );
-
--- Index for faster lookups
-CREATE INDEX IF NOT EXISTS idx_wa_sessions_id ON wa_sessions(id);
-
--- Function to auto-update the updated_at column
-CREATE OR REPLACE FUNCTION update_wa_sessions_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE 'plpgsql';
-
--- Trigger to call the function on updates
-DROP TRIGGER IF EXISTS trigger_update_wa_sessions_updated_at ON wa_sessions;
-CREATE TRIGGER trigger_update_wa_sessions_updated_at
-    BEFORE UPDATE ON wa_sessions
-    FOR EACH ROW
-    EXECUTE FUNCTION update_wa_sessions_updated_at();
-
--- ============================================
--- IMPORTANT: Disable RLS for anon key access
--- ============================================
--- Run this if you get "row-level security policy" error
-ALTER TABLE wa_sessions DISABLE ROW LEVEL SECURITY;
-
--- If RLS was already enabled, drop existing policies
-DROP POLICY IF EXISTS "Allow all access" ON wa_sessions;
-
--- Alternative: If you WANT RLS enabled, uncomment below:
--- ALTER TABLE wa_sessions ENABLE ROW LEVEL SECURITY;
--- CREATE POLICY "Allow all access" ON wa_sessions FOR ALL USING (true) WITH CHECK (true);
-
-COMMENT ON TABLE wa_sessions IS 'Stores WhatsApp Baileys authentication state for session persistence';
-COMMENT ON COLUMN wa_sessions.id IS 'Key identifier like creds, app-state-sync-key-xxx, pre-key-N';
-COMMENT ON COLUMN wa_sessions.value IS 'Serialized auth data (Buffers are Base64 encoded)';
-
+CREATE TABLE public.wa_bot_contacts (
+  jid text NOT NULL,
+  push_name text,
+  is_allowed boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_bot_contacts_pkey PRIMARY KEY (jid)
+);
+CREATE TABLE public.wa_bot_prompts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  content text NOT NULL,
+  is_active boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_bot_prompts_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.wa_bot_settings (
+  id text NOT NULL,
+  value jsonb NOT NULL,
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_bot_settings_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.wa_chat_history (
+  jid text NOT NULL,
+  push_name text,
+  history jsonb DEFAULT '[]'::jsonb,
+  msg_count integer DEFAULT 0,
+  last_active timestamp with time zone DEFAULT now(),
+  created_at timestamp with time zone DEFAULT now(),
+  proactive_count integer DEFAULT 0,
+  last_sender text,
+  CONSTRAINT wa_chat_history_pkey PRIMARY KEY (jid)
+);
+CREATE TABLE public.wa_chat_history_local (
+  jid text NOT NULL,
+  push_name text,
+  history jsonb DEFAULT '[]'::jsonb,
+  msg_count integer DEFAULT 0,
+  last_active timestamp with time zone DEFAULT now(),
+  created_at timestamp with time zone DEFAULT now(),
+  proactive_count integer DEFAULT 0,
+  last_sender text,
+  CONSTRAINT wa_chat_history_local_pkey PRIMARY KEY (jid)
+);
+CREATE TABLE public.wa_sessions (
+  id text NOT NULL,
+  value jsonb NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_sessions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.wa_sessions_local (
+  id text NOT NULL,
+  value jsonb NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_sessions_local_pkey PRIMARY KEY (id)
+);
