@@ -10,15 +10,8 @@ const { useSupabaseAuthState } = require('./auth.service');
 const fs = require('fs');
 const path = require('path');
 
-// Simple file logger for debugging
-const logFile = path.join(__dirname, '../../..', 'debug.log');
-const logToFile = (msg) => {
-    try {
-        const entry = `[${new Date().toISOString()}] ${msg}\n`;
-        fs.appendFileSync(logFile, entry);
-        console.log(msg);
-    } catch (e) { }
-};
+// Use standard logger
+const { logger } = require('../../config/logger');
 
 class ConnectionService {
     async connect(sessionId = 'main-session') {
@@ -99,6 +92,7 @@ class ConnectionService {
                     if (connection === 'open') {
                         sessionData.connectionState.qr = null;
                         sessionData.connectionState.phoneNumber = socket.user?.id?.split(':')[0] || null;
+                        sessionData.connectionState.name = socket.user?.name || null;
                         console.log(`\n✅ [${sessionId}] Connected! Phone: ${sessionData.connectionState.phoneNumber}\n`);
                     }
 
@@ -126,7 +120,7 @@ class ConnectionService {
             socket.ev.on('creds.update', saveCreds);
 
             socket.ev.on('messages.upsert', async ({ messages, type }) => {
-                logToFile(`📩 [${sessionId}] messages.upsert type=${type}, count=${messages.length}`);
+                logger.info(`📩 [${sessionId}] messages.upsert type=${type}, count=${messages.length}`);
 
                 if (type === 'notify') {
                     const aiBotService = require('../ai/aiBot.service');
@@ -143,7 +137,7 @@ class ConnectionService {
                                 }
                             } catch (err) {
                                 console.error(`❌ [${sessionId}] Bot Error:`, err.message);
-                                logToFile(`❌ [${sessionId}] Bot Error: ${err.message}`);
+                                logger.error(`❌ [${sessionId}] Bot Error: ${err.message}`);
                             }
                         }
                     }

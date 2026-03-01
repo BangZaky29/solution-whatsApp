@@ -68,6 +68,7 @@ function getConnectionStatus(socket, connectionState) {
         status: connection || 'disconnected',
         isConnected: connection === 'open',
         phoneNumber: phoneNumber || null,
+        name: connectionState.name || socket?.user?.name || null,
         hasQR: !!qr,
         qr: qr || null,
         user: socket?.user || null

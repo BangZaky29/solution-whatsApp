@@ -1,3 +1,20 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.wa_ai_sessions (
+  id text NOT NULL,
+  value jsonb NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_ai_sessions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.wa_ai_sessions_local (
+  id text NOT NULL,
+  value jsonb NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_ai_sessions_local_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.wa_bot_api_keys (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,

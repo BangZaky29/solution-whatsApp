@@ -42,7 +42,8 @@ class SessionManager {
             activeSessions.push({
                 id: key,
                 status: val.connectionState.connection,
-                phone: val.connectionState.phoneNumber
+                phone: val.connectionState.phoneNumber,
+                name: val.connectionState.name || null
             });
         });
         return activeSessions;

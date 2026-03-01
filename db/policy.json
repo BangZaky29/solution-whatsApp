@@ -1,22 +1,102 @@
 [
     {
         "schemaname": "public",
-        "tablename": "wa_bot_contacts",
-        "policyname": "Allow all for backend",
+        "tablename": "wa_ai_sessions",
+        "policyname": "Allow all access",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
-        "operation": "ALL",
-        "using_expression": "true",
-        "check_expression": null
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_ai_sessions_local",
+        "policyname": "Allow all access",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_bot_api_keys",
+        "policyname": "Allow all access",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_bot_contacts",
+        "policyname": "Allow all access",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
     },
     {
         "schemaname": "public",
         "tablename": "wa_bot_prompts",
-        "policyname": "Allow all for backend",
+        "policyname": "Allow all access",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
-        "operation": "ALL",
-        "using_expression": "true",
-        "check_expression": null
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_bot_settings",
+        "policyname": "Allow all access",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_chat_history",
+        "policyname": "Allow all access",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_chat_history_local",
+        "policyname": "Allow all access",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_sessions",
+        "policyname": "Allow all access",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_sessions_local",
+        "policyname": "Allow all access",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
     }
 ]
