@@ -77,7 +77,9 @@ class ConnectionService {
                 printQRInTerminal: false,
                 generateHighQualityLinkPreview: true,
                 browser: ['WhatsApp Gateway', 'Chrome', '120.0.0'],
-                getMessage: async (key) => ({ conversation: 'Message not found' })
+                getMessage: async (key) => {
+                    return undefined;
+                }
             });
 
             sessionData.socket = socket;
@@ -99,11 +101,15 @@ class ConnectionService {
                         sessionData.connectionState.qr = null;
                         sessionData.connectionState.phoneNumber = socket.user?.id?.split(':')[0] || null;
                         sessionData.connectionState.name = socket.user?.name || null;
-                        console.log(`\n✅ [${sessionData.displayName}] Connected! Phone: ${sessionData.connectionState.phoneNumber}\n`);
+
+                        const isMulti = UUID_REGEX.test(sessionId) || sessionId === 'wa-bot-ai';
+                        const category = isMulti ? '[ACTIVATION WA MULTI]' : '[ACTIVATION WA TUNGGAL]';
+
+                        console.log(`\n${category} :\n✅ [${sessionData.displayName}] Connected! Phone: ${sessionData.connectionState.phoneNumber}\n`);
 
                         // PERSISTENCE: If sessionId is a UUID, record it in user_sessions
                         if (UUID_REGEX.test(sessionId)) {
-                            console.log(`💾 [${sessionData.displayName}] Recording session for user in database...`);
+                            console.log(`\n[Recording session...]:\n💾 [${sessionData.displayName}] Recording session for user in database...`);
                             await configService.upsertUserSession(sessionId, socket.user.id);
                         }
                     }

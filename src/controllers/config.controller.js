@@ -5,9 +5,9 @@ const aiBotService = require('../services/ai/aiBot.service');
 
 const getStats = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId; // Guaranteed by middleware
         const chats = await historyService.getAllChatStats(userId);
-        const globalStats = await configService.getSetting(userId ? `global_stats:${userId}` : 'global_stats') || { requests: 0, responses: 0 };
+        const globalStats = await configService.getSetting(`global_stats:${userId}`) || { requests: 0, responses: 0 };
 
         res.json({
             success: true,
@@ -21,7 +21,7 @@ const getStats = async (req, res) => {
 
 const getPrompts = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const prompts = await configService.getAllPrompts(userId);
         res.json({ success: true, prompts });
     } catch (error) {
@@ -31,7 +31,7 @@ const getPrompts = async (req, res) => {
 
 const upsertPrompt = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { id, name, content, isActive } = req.body;
 
         const promptData = {
@@ -70,7 +70,7 @@ const upsertPrompt = async (req, res) => {
 
 const activatePrompt = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { id } = req.body;
         const result = await configService.setActivePrompt(id, userId);
         if (result && result.error) {
@@ -86,11 +86,10 @@ const activatePrompt = async (req, res) => {
 
 const updatePrompt = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { id } = req.params;
         const { name, content } = req.body;
-        let query = supabase.from('wa_bot_prompts').update({ name, content }).eq('id', id);
-        if (userId) query = query.eq('user_id', userId);
+        let query = supabase.from('wa_bot_prompts').update({ name, content }).eq('id', id).eq('user_id', userId);
         const { error } = await query;
         if (error) {
             console.error(`❌ [updatePrompt] Error:`, error.message);
@@ -105,10 +104,9 @@ const updatePrompt = async (req, res) => {
 
 const deletePrompt = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { id } = req.params;
-        let query = supabase.from('wa_bot_prompts').delete().eq('id', id);
-        if (userId) query = query.eq('user_id', userId);
+        let query = supabase.from('wa_bot_prompts').delete().eq('id', id).eq('user_id', userId);
         const { error } = await query;
         if (error) {
             console.error(`❌ [deletePrompt] Error:`, error.message);
@@ -123,7 +121,7 @@ const deletePrompt = async (req, res) => {
 
 const getContacts = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const contacts = await configService.getAllowedContacts(userId);
         const mode = await configService.getTargetMode(userId);
         res.json({ success: true, contacts, mode });
@@ -134,9 +132,7 @@ const getContacts = async (req, res) => {
 
 const addContact = async (req, res) => {
     try {
-        // Node.js otomatis baca header jadi lowercase, 
-        // tapi kita pastiin lagi ambil dari x-session-id
-        const userId = req.headers['x-session-id'];
+        const userId = req.userId;
         const { jid, name } = req.body;
 
         // LOG untuk debugging (Cek di terminal PM2/Node)
@@ -183,11 +179,10 @@ const addContact = async (req, res) => {
 
 const updateContact = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { jid } = req.params;
         const { name } = req.body;
-        let query = supabase.from('wa_bot_contacts').update({ push_name: name }).eq('jid', jid);
-        if (userId) query = query.eq('user_id', userId);
+        let query = supabase.from('wa_bot_contacts').update({ push_name: name }).eq('jid', jid).eq('user_id', userId);
         const { error } = await query;
         if (error) {
             console.error(`❌ [updateContact] Error:`, error.message);
@@ -228,7 +223,7 @@ const setTargetMode = async (req, res) => {
 
 const getHistory = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { jid } = req.params;
         const history = await historyService.getHistory(jid, userId);
         res.json({ success: true, history });
@@ -239,7 +234,7 @@ const getHistory = async (req, res) => {
 
 const getSystemPrompt = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const prompt = await configService.getSystemPrompt(userId);
         res.json({
             success: true,
@@ -269,7 +264,7 @@ const updateSystemPrompt = async (req, res) => {
 
 const getKeys = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const keys = await configService.getAllApiKeys(userId);
         res.json({ success: true, keys });
     } catch (error) {
@@ -295,7 +290,7 @@ const addKey = async (req, res) => {
 
 const updateKey = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { id } = req.params;
         const { name, key, model, version } = req.body;
         const { error } = await configService.updateApiKey(id, name, key, model, version, userId);
@@ -312,7 +307,7 @@ const updateKey = async (req, res) => {
 
 const deleteKey = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { error } = await configService.removeApiKey(req.params.id, userId);
         if (error) {
             console.error(`❌ [deleteKey] Error:`, error.message);
@@ -327,7 +322,7 @@ const deleteKey = async (req, res) => {
 
 const activateKey = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const result = await configService.activateApiKey(req.params.id, userId);
         if (result.error) {
             console.error(`❌ [activateKey] Error:`, result.error.message);
@@ -342,7 +337,7 @@ const activateKey = async (req, res) => {
 
 const getAIControls = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const controls = await configService.getAIControls(userId);
         res.json({ success: true, controls });
     } catch (error) {
@@ -352,13 +347,13 @@ const getAIControls = async (req, res) => {
 
 const updateAIControls = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { controls } = req.body;
         const success = await configService.updateAIControls(userId, controls);
 
         if (success) {
             const displayName = await configService.getUserDisplay(userId);
-            console.log(`✅ [Config] AI Controls updated for user: ${displayName}`);
+            console.log(`\n[CONFIGURATION-User]:\n✅ [Config] AI Controls updated for user: ${displayName}`);
         }
 
         res.json({ success });

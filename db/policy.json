@@ -22,26 +22,6 @@
     {
         "schemaname": "public",
         "tablename": "wa_bot_api_keys",
-        "policyname": "Allow all access",
-        "permissive": "PERMISSIVE",
-        "roles": "{public}",
-        "cmd": "ALL",
-        "qual": "true",
-        "with_check": "true"
-    },
-    {
-        "schemaname": "public",
-        "tablename": "wa_bot_api_keys",
-        "policyname": "Allow public read of active api keys",
-        "permissive": "PERMISSIVE",
-        "roles": "{public}",
-        "cmd": "SELECT",
-        "qual": "true",
-        "with_check": null
-    },
-    {
-        "schemaname": "public",
-        "tablename": "wa_bot_api_keys",
         "policyname": "Users can manage their own API keys",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
@@ -51,23 +31,23 @@
     },
     {
         "schemaname": "public",
-        "tablename": "wa_bot_contacts",
-        "policyname": "Users can manage their own contacts",
-        "permissive": "PERMISSIVE",
-        "roles": "{authenticated}",
-        "cmd": "ALL",
-        "qual": "(auth.uid() = user_id)",
-        "with_check": "(auth.uid() = user_id)"
-    },
-    {
-        "schemaname": "public",
-        "tablename": "wa_bot_prompts",
-        "policyname": "Allow all access",
+        "tablename": "wa_bot_api_keys",
+        "policyname": "Users can only manage their own API keys",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
         "cmd": "ALL",
-        "qual": "true",
-        "with_check": "true"
+        "qual": "(user_id = auth.uid())",
+        "with_check": "(user_id = auth.uid())"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_bot_contacts",
+        "policyname": "Users can only manage their own contacts",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "(user_id = auth.uid())",
+        "with_check": "(user_id = auth.uid())"
     },
     {
         "schemaname": "public",
@@ -81,13 +61,13 @@
     },
     {
         "schemaname": "public",
-        "tablename": "wa_bot_settings",
-        "policyname": "Allow all access",
+        "tablename": "wa_bot_prompts",
+        "policyname": "Users can only manage their own prompts",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
         "cmd": "ALL",
-        "qual": "true",
-        "with_check": "true"
+        "qual": "(user_id = auth.uid())",
+        "with_check": "(user_id = auth.uid())"
     },
     {
         "schemaname": "public",
@@ -101,13 +81,13 @@
     },
     {
         "schemaname": "public",
-        "tablename": "wa_chat_history",
-        "policyname": "Allow all access",
+        "tablename": "wa_bot_settings",
+        "policyname": "Users can only manage their own settings",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
         "cmd": "ALL",
-        "qual": "true",
-        "with_check": "true"
+        "qual": "((id ~~ ('ai_controls:'::text || (auth.uid())::text)) OR (id = 'ai_controls'::text))",
+        "with_check": "((id ~~ ('ai_controls:'::text || (auth.uid())::text)) OR (id = 'ai_controls'::text))"
     },
     {
         "schemaname": "public",
@@ -121,18 +101,28 @@
     },
     {
         "schemaname": "public",
-        "tablename": "wa_chat_history_local",
-        "policyname": "Allow all access",
+        "tablename": "wa_chat_history",
+        "policyname": "Users can only see their own chat history",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
         "cmd": "ALL",
-        "qual": "true",
-        "with_check": "true"
+        "qual": "(user_id = auth.uid())",
+        "with_check": "(user_id = auth.uid())"
     },
     {
         "schemaname": "public",
         "tablename": "wa_chat_history_local",
         "policyname": "Users can manage their own history",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "ALL",
+        "qual": "(user_id = auth.uid())",
+        "with_check": "(user_id = auth.uid())"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_chat_history_local",
+        "policyname": "Users can only see their own local chat history",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
         "cmd": "ALL",

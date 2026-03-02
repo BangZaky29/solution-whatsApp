@@ -4,6 +4,7 @@ const sessionController = require('../controllers/session.controller');
 const whatsappController = require('../controllers/whatsapp.controller');
 const configController = require('../controllers/config.controller');
 const { validateSession } = require('../middleware/session.middleware');
+const { userAuth } = require('../middleware/userAuth.middleware');
 
 // Session Routes
 router.post('/:sessionId/init', sessionController.initSession);
@@ -18,31 +19,31 @@ router.post('/:sessionId/send-media', validateSession, whatsappController.sendMe
 router.post('/:sessionId/send-bulk', validateSession, whatsappController.sendBulk);
 router.post('/:sessionId/notify/payment-confirmation', validateSession, whatsappController.sendPaymentConfirmation);
 
-// Config & Stats Routes
-router.get('/stats/history', configController.getStats);
-router.get('/config/prompts', configController.getPrompts);
-router.post('/config/prompts', configController.upsertPrompt);
-router.post('/config/prompts/activate', configController.activatePrompt);
-router.put('/config/prompts/:id', configController.updatePrompt);
-router.delete('/config/prompts/:id', configController.deletePrompt);
+// Config & Stats Routes (PROTECTED BY USER AUTH)
+router.get('/stats/history', userAuth, configController.getStats);
+router.get('/config/prompts', userAuth, configController.getPrompts);
+router.post('/config/prompts', userAuth, configController.upsertPrompt);
+router.post('/config/prompts/activate', userAuth, configController.activatePrompt);
+router.put('/config/prompts/:id', userAuth, configController.updatePrompt);
+router.delete('/config/prompts/:id', userAuth, configController.deletePrompt);
 
-router.get('/config/contacts', configController.getContacts);
-router.post('/config/contacts', configController.addContact);
-router.put('/config/contacts/:jid', configController.updateContact);
-router.delete('/config/contacts/:jid', configController.deleteContact);
-router.post('/config/target-mode', configController.setTargetMode);
+router.get('/config/contacts', userAuth, configController.getContacts);
+router.post('/config/contacts', userAuth, configController.addContact);
+router.put('/config/contacts/:jid', userAuth, configController.updateContact);
+router.delete('/config/contacts/:jid', userAuth, configController.deleteContact);
+router.post('/config/target-mode', userAuth, configController.setTargetMode);
 
-router.get('/history/:jid', configController.getHistory);
-router.get('/config/prompt', configController.getSystemPrompt);
-router.post('/config/prompt', configController.updateSystemPrompt);
+router.get('/history/:jid', userAuth, configController.getHistory);
+router.get('/config/prompt', userAuth, configController.getSystemPrompt);
+router.post('/config/prompt', userAuth, configController.updateSystemPrompt);
 
-// API Keys Routes
-router.get('/config/keys', configController.getKeys);
-router.post('/config/keys', configController.addKey);
-router.put('/config/keys/:id', configController.updateKey);
-router.delete('/config/keys/:id', configController.deleteKey);
-router.patch('/config/keys/:id/activate', configController.activateKey);
-router.get('/config/ai-controls', configController.getAIControls);
-router.put('/config/ai-controls', configController.updateAIControls);
+// API Keys Routes (PROTECTED BY USER AUTH)
+router.get('/config/keys', userAuth, configController.getKeys);
+router.post('/config/keys', userAuth, configController.addKey);
+router.put('/config/keys/:id', userAuth, configController.updateKey);
+router.delete('/config/keys/:id', userAuth, configController.deleteKey);
+router.patch('/config/keys/:id/activate', userAuth, configController.activateKey);
+router.get('/config/ai-controls', userAuth, configController.getAIControls);
+router.put('/config/ai-controls', userAuth, configController.updateAIControls);
 
 module.exports = router;

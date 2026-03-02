@@ -35,11 +35,25 @@ class CSBotService {
         const session = sessionManager.getSession(this.sessionId);
 
         if (!session || !session.socket || session.connectionState.connection !== 'open') {
+            const status = session?.connectionState?.connection || 'NOT_FOUND';
+            console.error(`❌ [CS-Bot] Cannot send OTP: Session is ${status}`);
             throw new Error('CS-BOT session is not active or connected');
         }
 
         const remoteJid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
-        return await whatsappService.sendTextMessage(session.socket, remoteJid, message);
+        const sender = phone.split('@')[0];
+
+        console.log(`\n[OTP-Service]:\n🚀 Sending OTP to ${sender}...`);
+
+        const result = await whatsappService.sendTextMessage(session.socket, remoteJid, message);
+
+        if (result.success) {
+            console.log(`✅ [OTP-Service] Success! OTP sent to ${sender}`);
+        } else {
+            console.error(`❌ [OTP-Service] Failed to send to ${sender}: ${result.error}`);
+        }
+
+        return result;
     }
 }
 
