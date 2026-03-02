@@ -13,38 +13,31 @@ class HistoryService {
     }
 
     async getHistory(jid, userId = null) {
+        if (!userId || userId === 'null') return [];
         try {
-            let query = supabase
+            const { data, error } = await supabase
                 .from(this.tableName)
                 .select('history')
-                .eq('jid', jid);
+                .eq('jid', jid)
+                .eq('user_id', userId)
+                .single();
 
-            if (userId) query = query.eq('user_id', userId);
-
-            const { data, error } = await query.single();
-
-            if (error) {
-                if (error.code === 'PGRST116') return [];
-                console.error(`❌ [History Error] Fetch failed for ${jid}${userId ? ` (User: ${userId})` : ''}:`, error.message);
-                return [];
-            }
+            if (error) return [];
             return data?.history || [];
         } catch (err) {
-            console.error(`❌ [History Error] Exception:`, err.message);
             return [];
         }
     }
 
     async saveMessage(jid, pushName, newMessage, userId = null) {
+        if (!userId || userId === 'null') return;
         try {
-            let query = supabase
+            const { data: existing } = await supabase
                 .from(this.tableName)
                 .select('history, msg_count, proactive_count')
-                .eq('jid', jid);
-
-            if (userId) query = query.eq('user_id', userId);
-
-            const { data: existing } = await query.single();
+                .eq('jid', jid)
+                .eq('user_id', userId)
+                .single();
 
             let history = existing?.history || [];
             let msgCount = (existing?.msg_count || 0) + 1;
@@ -73,20 +66,15 @@ class HistoryService {
                 msg_count: msgCount,
                 proactive_count: proactiveCount,
                 last_sender: newMessage.role,
-                last_active: new Date().toISOString()
+                last_active: new Date().toISOString(),
+                user_id: userId
             };
 
-            if (userId) upsertData.user_id = userId;
-
-            const { error } = await supabase
+            await supabase
                 .from(this.tableName)
                 .upsert(upsertData, {
-                    onConflict: userId ? 'jid, user_id' : 'jid'
+                    onConflict: 'jid,user_id'
                 });
-
-            if (error) {
-                console.error(`❌ [History Error] Upsert failed for ${jid}:`, error.message);
-            }
         } catch (err) {
             console.error(`❌ [History Error] Save exception:`, err.message);
         }
@@ -102,24 +90,15 @@ class HistoryService {
     }
 
     async getAllChatStats(userId = null) {
+        if (!userId || userId === 'null') return [];
         try {
-            let query = supabase
+            const { data, error } = await supabase
                 .from(this.tableName)
                 .select('jid, push_name, msg_count, last_active, history')
+                .eq('user_id', userId)
                 .order('last_active', { ascending: false });
 
-            if (userId) {
-                query = query.eq('user_id', userId);
-            } else {
-                query = query.is('user_id', null);
-            }
-
-            const { data, error } = await query;
-
-            if (error) {
-                console.error(`❌ [History Error] Stats fetch failed:`, error.message);
-                return [];
-            }
+            if (error) return [];
 
             return (data || []).map(chat => {
                 const history = chat.history || [];
@@ -134,35 +113,20 @@ class HistoryService {
                 };
             });
         } catch (err) {
-            console.error(`❌ [History Error] Stats exception:`, err.message);
             return [];
         }
     }
 
     async clearAllHistory(userId = null) {
+        if (!userId || userId === 'null') return;
         try {
-            console.log(`🧹 [History] Starting cleanup...`);
-            let query = supabase
+            await supabase
                 .from(this.tableName)
                 .update({
                     history: [],
                     proactive_count: 0
                 })
-                .neq('jid', '');
-
-            if (userId) {
-                query = query.eq('user_id', userId);
-            } else {
-                query = query.is('user_id', null);
-            }
-
-            const { error } = await query;
-
-            if (error) {
-                console.error(`❌ [History Error] Cleanup failed:`, error.message);
-            } else {
-                console.log(`✅ [History] Storage cleanup successful!`);
-            }
+                .eq('user_id', userId);
         } catch (err) {
             console.error(`❌ [History Error] Cleanup exception:`, err.message);
         }

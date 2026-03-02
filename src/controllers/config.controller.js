@@ -9,6 +9,8 @@ const getStats = async (req, res) => {
         const chats = await historyService.getAllChatStats(userId);
         const globalStats = await configService.getSetting(`global_stats:${userId}`) || { requests: 0, responses: 0 };
 
+        console.log(`📊 [getStats] User: ${userId} | Chats found: ${chats.length}`);
+
         res.json({
             success: true,
             stats: chats,
@@ -23,6 +25,7 @@ const getPrompts = async (req, res) => {
     try {
         const userId = req.userId;
         const prompts = await configService.getAllPrompts(userId);
+        console.log(`📜 [getPrompts] User: ${userId} | Prompts found: ${prompts.length}`);
         res.json({ success: true, prompts });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -197,7 +200,7 @@ const updateContact = async (req, res) => {
 
 const deleteContact = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { error } = await configService.removeContact(req.params.jid, userId);
         if (error) {
             console.error(`❌ [deleteContact] Error:`, error.message);
@@ -212,7 +215,7 @@ const deleteContact = async (req, res) => {
 
 const setTargetMode = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { mode } = req.body;
         await configService.updateSetting(userId ? `target_mode:${userId}` : 'target_mode', { mode });
         res.json({ success: true });
@@ -247,7 +250,7 @@ const getSystemPrompt = async (req, res) => {
 
 const updateSystemPrompt = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { systemPrompt } = req.body;
         if (!systemPrompt) {
             return res.status(400).json({ success: false, error: 'systemPrompt is required' });
@@ -266,6 +269,7 @@ const getKeys = async (req, res) => {
     try {
         const userId = req.userId;
         const keys = await configService.getAllApiKeys(userId);
+        console.log(`🔑 [getKeys] User: ${userId} | Keys found: ${keys.length}`);
         res.json({ success: true, keys });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -274,7 +278,7 @@ const getKeys = async (req, res) => {
 
 const addKey = async (req, res) => {
     try {
-        const userId = req.headers['x-session-id'] || null;
+        const userId = req.userId;
         const { name, key, model, version } = req.body;
         const { error } = await configService.addApiKey(name, key, model, version, userId);
         if (error) {

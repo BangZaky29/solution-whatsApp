@@ -9,10 +9,11 @@ const QRCode = require('qrcode');
 const initSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
-        await connectionService.connect(sessionId);
+        const userId = req.userId;
+        await connectionService.connect(sessionId, userId);
         res.json({
             success: true,
-            message: `Initializing session '${sessionId}'...`
+            message: `Initializing session '${sessionId}' for user ${userId}...`
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

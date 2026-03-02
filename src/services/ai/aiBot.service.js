@@ -28,10 +28,10 @@ class AIBotService {
     }
 
     async handleIncomingMessage(sessionId, socket, msg) {
-        // GUIDED: If sessionId is a UUID, it's a user-specific AI session
-        if (!UUID_REGEX.test(sessionId) && sessionId !== 'wa-bot-ai') return;
+        const session = sessionManager.getSession(sessionId);
+        const userId = UUID_REGEX.test(sessionId) ? sessionId : (session?.userId || null);
 
-        const userId = UUID_REGEX.test(sessionId) ? sessionId : null;
+        if (!userId && sessionId !== 'wa-bot-ai') return;
         const remoteJid = msg.key.remoteJid;
         if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') return;
 
@@ -62,7 +62,6 @@ class AIBotService {
             if (contextText) fullMessageText = `(Membalas pesan: "${contextText}") ` + messageText;
         }
 
-        const session = sessionManager.getSession(sessionId);
         const displayName = session?.displayName || sessionId;
 
         console.log(`🤖 [AI-Bot][${displayName}] Message from ${cleanSender}: "${fullMessageText}"`);

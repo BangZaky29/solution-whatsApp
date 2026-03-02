@@ -18,7 +18,7 @@ const configService = require('../common/config.service');
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 class ConnectionService {
-    async connect(sessionId = 'main-session') {
+    async connect(sessionId = 'main-session', userId = null) {
         try {
             // Prevent multiple simultaneous connection attempts for the same sessionId
             const existingSession = sessionManager.getSession(sessionId);
@@ -50,6 +50,7 @@ class ConnectionService {
             const sessionData = {
                 socket: null,
                 displayName,
+                userId: userId || existingSession?.userId || null,
                 clearSessionHandler: null,
                 connectionState: {
                     qr: null,

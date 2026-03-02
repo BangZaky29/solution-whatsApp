@@ -15,7 +15,7 @@ class ConfigService {
 
     async getGeminiApiKey(userId = null) {
         try {
-            // 1. Try Specific User Key
+            // Strictly filter by userId
             if (userId && userId !== 'null' && userId !== 'undefined') {
                 const { data, error } = await supabase
                     .from(this.apiKeysTable)
@@ -34,24 +34,7 @@ class ConfigService {
                 }
             }
 
-            // 2. Fallback to Global Key (user_id IS NULL)
-            const { data: globalData, error: globalError } = await supabase
-                .from(this.apiKeysTable)
-                .select('key_value, model_name, api_version')
-                .eq('is_active', true)
-                .is('user_id', null)
-                .limit(1)
-                .single();
-
-            if (!globalError && globalData) {
-                return {
-                    key: globalData.key_value,
-                    model: globalData.model_name || 'gemini-2.5-flash',
-                    version: globalData.api_version || 'v1beta'
-                };
-            }
-
-            // 3. System Environment Fallback
+            // Disable fallback to global key for strict isolation
             return {
                 key: process.env.GEMINI_API_KEY || null,
                 model: 'gemini-2.5-flash',
@@ -69,31 +52,23 @@ class ConfigService {
 
     async getAllApiKeys(userId = null) {
         try {
-            let query = supabase
+            if (!userId || userId === 'null') return [];
+            const { data, error } = await supabase
                 .from(this.apiKeysTable)
                 .select('*')
+                .eq('user_id', userId)
                 .order('created_at', { ascending: false });
 
-            if (userId) {
-                query = query.eq('user_id', userId);
-            } else {
-                query = query.is('user_id', null);
-            }
-
-            const { data, error } = await query;
-
-            if (error) {
-                console.error(`❌ [ConfigService] Error fetching all API keys:`, error.message);
-                throw error;
-            }
+            if (error) throw error;
             return data || [];
         } catch (err) {
-            console.error(`❌ [ConfigService] Catch error fetching API keys:`, err.message);
+            console.error(`❌ [ConfigService] Error fetching API keys:`, err.message);
             return [];
         }
     }
 
     async addApiKey(name, key, model = 'gemini-2.5-flash', version = 'v1beta', userId = null) {
+        if (!userId || userId === 'null') return { error: "User ID required" };
         return await supabase.from(this.apiKeysTable).insert({
             name,
             key_value: key,
@@ -105,28 +80,25 @@ class ConfigService {
     }
 
     async updateApiKey(id, name, key, model, version, userId = null) {
+        if (!userId || userId === 'null') return { error: "User ID required" };
         const updateData = { name };
         if (key) updateData.key_value = key;
         if (model) updateData.model_name = model;
         if (version !== undefined) updateData.api_version = version;
 
-        let query = supabase.from(this.apiKeysTable).update(updateData).eq('id', id);
-        if (userId) query = query.eq('user_id', userId);
-        return await query;
+        return await supabase.from(this.apiKeysTable).update(updateData).eq('id', id).eq('user_id', userId);
     }
 
     async removeApiKey(id, userId = null) {
-        let query = supabase.from(this.apiKeysTable).delete().eq('id', id);
-        if (userId) query = query.eq('user_id', userId);
-        return await query;
+        if (!userId || userId === 'null') return { error: "User ID required" };
+        return await supabase.from(this.apiKeysTable).delete().eq('id', id).eq('user_id', userId);
     }
 
     async activateApiKey(id, userId = null) {
-        let deactivateQuery = supabase.from(this.apiKeysTable).update({ is_active: false }).neq('id', id);
-        if (userId) deactivateQuery = deactivateQuery.eq('user_id', userId);
-        await deactivateQuery;
+        if (!userId || userId === 'null') return { error: "User ID required" };
 
-        return await supabase.from(this.apiKeysTable).update({ is_active: true }).eq('id', id);
+        await supabase.from(this.apiKeysTable).update({ is_active: false }).neq('id', id).eq('user_id', userId);
+        return await supabase.from(this.apiKeysTable).update({ is_active: true }).eq('id', id).eq('user_id', userId);
     }
 
     async getSetting(id) {
@@ -137,14 +109,9 @@ class ConfigService {
                 .eq('id', id)
                 .single();
 
-            if (error) {
-                if (error.code === 'PGRST116') return null;
-                console.error(`❌ [Config Error] Fetch failed for ${id}:`, error.message);
-                return null;
-            }
+            if (error) return null;
             return data?.value || null;
         } catch (err) {
-            console.error(`❌ [Config Error] Exception:`, err.message);
             return null;
         }
     }
@@ -154,246 +121,149 @@ class ConfigService {
             const { error } = await supabase
                 .from(this.settingsTable)
                 .upsert({ id, value, updated_at: new Date().toISOString() });
-
-            if (error) {
-                console.error(`❌ [Config Error] Update failed for ${id}:`, error.message);
-                return false;
-            }
-            return true;
+            return !error;
         } catch (err) {
-            console.error(`❌ [Config Error] Update exception:`, err.message);
             return false;
         }
     }
 
     async incrementStat(key, userId = null) {
+        if (!userId || userId === 'null') return;
         try {
-            const statKey = userId ? `global_stats:${userId}` : 'global_stats';
+            const statKey = `global_stats:${userId}`;
             const stats = await this.getSetting(statKey) || { requests: 0, responses: 0 };
             stats[key] = (stats[key] || 0) + 1;
             await this.updateSetting(statKey, stats);
-        } catch (err) {
-            console.error(`❌ [Config Error] Increment exception:`, err.message);
-        }
+        } catch (err) { /* ignore */ }
     }
 
     async getSystemPrompt(userId = null) {
         try {
-            // 1. Try Specific User Prompt
-            if (userId && userId !== 'null' && userId !== 'undefined') {
-                const { data: userPrompt, error } = await supabase
-                    .from(this.promptsTable)
-                    .select('content')
-                    .eq('is_active', true)
-                    .eq('user_id', userId)
-                    .limit(1)
-                    .single();
+            if (!userId || userId === 'null') return process.env.AI_BOT_SYSTEM_PROMPT || "Anda adalah asisten AI ramah.";
 
-                if (!error && userPrompt) return userPrompt.content;
-            }
-
-            // 2. Fallback to Global Prompt (user_id IS NULL)
-            const { data: globalPrompt, error: globalError } = await supabase
+            const { data: userPrompt, error } = await supabase
                 .from(this.promptsTable)
                 .select('content')
                 .eq('is_active', true)
-                .is('user_id', null)
+                .eq('user_id', userId)
                 .limit(1)
                 .single();
 
-            if (!globalError && globalPrompt) return globalPrompt.content;
+            if (!error && userPrompt) return userPrompt.content;
 
-            // 3. Setting Table Fallback (Legacy/Simple Mode)
-            const config = await this.getSetting(userId && userId !== 'null' ? `system_prompt:${userId}` : 'system_prompt');
-            if (config?.text) return config.text;
-
-            // 4. ENV or Hardcoded Default
-            return process.env.AI_BOT_SYSTEM_PROMPT || "Anda adalah asisten AI ramah.";
+            const config = await this.getSetting(`system_prompt:${userId}`);
+            return config?.text || process.env.AI_BOT_SYSTEM_PROMPT || "Anda adalah asisten AI ramah.";
         } catch (err) {
             return process.env.AI_BOT_SYSTEM_PROMPT || "Anda adalah asisten AI ramah.";
         }
     }
 
     async getAllPrompts(userId = null) {
-        let query = supabase.from(this.promptsTable).select('*').order('created_at', { ascending: false });
-        if (userId) {
-            query = query.eq('user_id', userId);
-        } else {
-            query = query.is('user_id', null);
-        }
-        const { data } = await query;
+        if (!userId || userId === 'null') return [];
+        const { data } = await supabase.from(this.promptsTable).select('*').eq('user_id', userId).order('created_at', { ascending: false });
         return data || [];
     }
 
     async setActivePrompt(id, userId = null) {
-        let deactivateQuery = supabase.from(this.promptsTable).update({ is_active: false }).neq('id', id);
-        if (userId) {
-            deactivateQuery = deactivateQuery.eq('user_id', userId);
-        } else {
-            deactivateQuery = deactivateQuery.is('user_id', null);
-        }
-        await deactivateQuery;
-
-        return await supabase.from(this.promptsTable).update({ is_active: true }).eq('id', id);
+        if (!userId || userId === 'null') return { error: "User ID required" };
+        await supabase.from(this.promptsTable).update({ is_active: false }).neq('id', id).eq('user_id', userId);
+        return await supabase.from(this.promptsTable).update({ is_active: true }).eq('id', id).eq('user_id', userId);
     }
 
     async getTargetMode(userId = null) {
-        const settingKey = userId ? `target_mode:${userId}` : 'target_mode';
+        if (!userId || userId === 'null') return 'all';
+        const settingKey = `target_mode:${userId}`;
         const setting = await this.getSetting(settingKey);
         return setting?.mode || 'all';
     }
 
     async isContactAllowed(jid, userId = null) {
+        if (!userId || userId === 'null') return false;
         const mode = await this.getTargetMode(userId);
         if (mode === 'all') return true;
 
         const cleanJid = jid.includes('@') ? jid : `${jid.replace(/\D/g, '')}@s.whatsapp.net`;
-        let query = supabase
+        const { data, error } = await supabase
             .from(this.contactsTable)
             .select('is_allowed')
-            .eq('jid', cleanJid);
+            .eq('jid', cleanJid)
+            .eq('user_id', userId)
+            .single();
 
-        if (userId) {
-            query = query.eq('user_id', userId);
-        } else {
-            query = query.is('user_id', null);
-        }
-        const { data, error } = await query.single();
-
-        if (error || !data) return false;
-        return data.is_allowed;
+        return !error && data?.is_allowed;
     }
 
     async getAllowedContacts(userId = null) {
-        let query = supabase.from(this.contactsTable).select('*').eq('is_allowed', true);
-        if (userId) {
-            query = query.eq('user_id', userId);
-        } else {
-            query = query.is('user_id', null);
-        }
-        const { data } = await query;
+        if (!userId || userId === 'null') return [];
+        const { data } = await supabase.from(this.contactsTable).select('*').eq('is_allowed', true).eq('user_id', userId);
         return data || [];
     }
 
     async addContact(jid, name, userId = null) {
-        // 1. Pastikan userId tidak null karena kolom user_id di DB adalah NOT NULL
-        if (!userId) {
-            console.error("❌ [ConfigService] Cannot add contact: userId is missing");
-            return { error: "User ID is required for multi-user isolation" };
-        }
-
+        if (!userId || userId === 'null') return { error: "User ID required" };
         const cleanJid = jid.includes('@') ? jid : `${jid.replace(/\D/g, '')}@s.whatsapp.net`;
-
-        // 2. Gunakan upsert dengan onConflict yang tepat (jid, user_id)
         return await supabase.from(this.contactsTable).upsert({
             jid: cleanJid,
             push_name: name,
             is_allowed: true,
             user_id: userId
-        }, {
-            onConflict: 'jid,user_id' // Pastikan tidak ada spasi setelah koma
-        });
+        }, { onConflict: 'jid,user_id' });
     }
 
     async removeContact(jid, userId = null) {
+        if (!userId || userId === 'null') return { error: "User ID required" };
         const cleanJid = jid.includes('@') ? jid : `${jid.replace(/\D/g, '')}@s.whatsapp.net`;
-        let query = supabase.from(this.contactsTable).delete().eq('jid', cleanJid);
-        if (userId) {
-            query = query.eq('user_id', userId);
-        } else {
-            query = query.is('user_id', null);
-        }
-        return await query;
+        return await supabase.from(this.contactsTable).delete().eq('jid', cleanJid).eq('user_id', userId);
     }
 
-    // USER SESSIONS
     async upsertUserSession(userId, waSessionId, isPrimary = false) {
         try {
-            const { error } = await supabase
-                .from(this.userSessionsTable)
-                .upsert({
-                    user_id: userId,
-                    wa_session_id: waSessionId,
-                    is_primary: isPrimary,
-                    created_at: new Date().toISOString()
-                }, { onConflict: 'user_id' });
-
-            if (error) {
-                console.error(`❌ [ConfigService] Error upserting user session:`, error.message);
-                return false;
-            }
-            return true;
-        } catch (err) {
-            console.error(`❌ [ConfigService] Catch error upserting user session:`, err.message);
-            return false;
-        }
+            return await supabase.from(this.userSessionsTable).upsert({
+                user_id: userId,
+                wa_session_id: waSessionId,
+                is_primary: isPrimary,
+                created_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+        } catch (err) { return false; }
     }
 
     async removeUserSession(waSessionId) {
         try {
-            const { error } = await supabase
-                .from(this.userSessionsTable)
-                .delete()
-                .eq('wa_session_id', waSessionId);
-
-            if (error) {
-                console.error(`❌ [ConfigService] Error removing user session:`, error.message);
-                return false;
-            }
-            return true;
-        } catch (err) {
-            console.error(`❌ [ConfigService] Catch error removing user session:`, err.message);
-            return false;
-        }
+            return await supabase.from(this.userSessionsTable).delete().eq('wa_session_id', waSessionId);
+        } catch (err) { return false; }
     }
 
     async getAllUserSessions() {
         try {
-            const { data, error } = await supabase
-                .from(this.userSessionsTable)
-                .select('user_id');
-
-            if (error) {
-                console.error(`❌ [ConfigService] Error getting all user sessions:`, error.message);
-                return [];
-            }
+            const { data } = await supabase.from(this.userSessionsTable).select('user_id');
             return data?.map(s => s.user_id) || [];
-        } catch (err) {
-            console.error(`❌ [ConfigService] Catch error getting all user sessions:`, err.message);
-            return [];
-        }
+        } catch (err) { return []; }
     }
 
     async getUserDisplay(userId) {
         try {
             if (!userId || userId === 'null' || userId === 'undefined') return 'System';
-
-            const { data, error } = await supabase
-                .from('users')
-                .select('username, full_name')
-                .eq('id', userId)
-                .single();
-
-            if (error || !data) return userId;
+            const { data } = await supabase.from('users').select('username, full_name').eq('id', userId).single();
+            if (!data) return userId;
             return data.username || data.full_name || userId;
-        } catch (err) {
-            return userId;
-        }
+        } catch (err) { return userId; }
     }
 
     async getAIControls(userId = null) {
-        const key = userId ? `ai_controls:${userId}` : 'ai_controls';
-        const defaultControls = {
+        if (!userId || userId === 'null') return { is_ai_enabled: false, is_proactive_enabled: false, response_delay_mins: 0 };
+        const key = `ai_controls:${userId}`;
+        const settings = await this.getSetting(key);
+        return {
             is_ai_enabled: true,
             is_proactive_enabled: true,
-            response_delay_mins: 0
+            response_delay_mins: 0,
+            ...(settings || {})
         };
-        const settings = await this.getSetting(key);
-        return { ...defaultControls, ...(settings || {}) };
     }
 
     async updateAIControls(userId, controls) {
-        const key = userId ? `ai_controls:${userId}` : 'ai_controls';
+        if (!userId || userId === 'null') return false;
+        const key = `ai_controls:${userId}`;
         return await this.updateSetting(key, controls);
     }
 }
