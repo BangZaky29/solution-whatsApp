@@ -36,8 +36,11 @@ class CSBotService {
 
         if (!session || !session.socket || session.connectionState.connection !== 'open') {
             const status = session?.connectionState?.connection || 'NOT_FOUND';
-            console.error(`❌ [CS-Bot] Cannot send OTP: Session is ${status}`);
-            throw new Error('CS-BOT session is not active or connected');
+            console.warn(`⚠️ [CS-Bot] Cannot send OTP: Session is ${status}`);
+            return {
+                success: false,
+                error: `CS-BOT session is ${status}. Please ensure the bot is connected.`
+            };
         }
 
         const remoteJid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;

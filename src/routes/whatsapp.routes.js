@@ -8,7 +8,7 @@ const { userAuth } = require('../middleware/userAuth.middleware');
 
 // Session Routes
 router.post('/:sessionId/init', userAuth, sessionController.initSession);
-router.get('/:sessionId/status', userAuth, validateSession, sessionController.getStatus);
+router.get('/:sessionId/status', validateSession, sessionController.getStatus);
 router.get('/:sessionId/qr', userAuth, validateSession, sessionController.getQrCode);
 router.post('/:sessionId/logout', userAuth, validateSession, sessionController.logout);
 router.get('/:sessionId/info', userAuth, validateSession, sessionController.getInfo);

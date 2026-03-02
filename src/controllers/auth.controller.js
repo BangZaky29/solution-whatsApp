@@ -69,7 +69,15 @@ const register = async (req, res) => {
 
         // 3. Send OTP
         const message = `🔐 *KODE OTP ANDA*\n\nHalo ${full_name || username},\nKode verifikasi Anda adalah: *${otpCodes}*\n\nBerlaku selama 5 menit.`;
-        await csBotService.sendOTP(phone, message);
+        const sendResult = await csBotService.sendOTP(phone, message);
+
+        if (!sendResult.success) {
+            console.error(`❌ [Register] Failed to send OTP:`, sendResult.error);
+            return res.status(503).json({
+                success: false,
+                error: 'Pendaftaran berhasil disimpan, namun gagal mengirim OTP WhatsApp. Hubungi admin untuk aktivasi manual.'
+            });
+        }
 
         res.json({
             success: true,
@@ -132,7 +140,15 @@ const login = async (req, res) => {
         }
 
         const message = `🔐 *KODE LOGIN ANDA*\n\nKode verifikasi login Anda adalah: *${otpCodes}*\n\nBerlaku selama 5 menit.`;
-        await csBotService.sendOTP(user.phone, message);
+        const sendResult = await csBotService.sendOTP(user.phone, message);
+
+        if (!sendResult.success) {
+            console.error(`❌ [Login] Failed to send OTP:`, sendResult.error);
+            return res.status(503).json({
+                success: false,
+                error: 'Gagal mengirim OTP WhatsApp. Pastikan CS-BOT sudah aktif dan terhubung.'
+            });
+        }
 
         res.json({
             success: true,
@@ -228,7 +244,15 @@ const resendOtp = async (req, res) => {
         await supabase.from('otp_codes').insert({ user_id: userId, code: otpCodes, expires_at: expiresAt });
 
         const message = `🔐 *KODE OTP BARU*\n\nKode verifikasi baru Anda adalah: *${otpCodes}*\n\nBerlaku selama 5 menit.`;
-        await csBotService.sendOTP(user.phone, message);
+        const sendResult = await csBotService.sendOTP(user.phone, message);
+
+        if (!sendResult.success) {
+            console.error(`❌ [ResendOTP] Failed to send OTP:`, sendResult.error);
+            return res.status(503).json({
+                success: false,
+                error: 'Gagal mengirim ulang OTP. Pastikan CS-BOT terhubung.'
+            });
+        }
 
         res.json({ success: true, message: 'OTP resent successfully' });
     } catch (error) {
