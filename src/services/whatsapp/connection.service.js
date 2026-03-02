@@ -147,15 +147,15 @@ class ConnectionService {
                     for (const msg of messages) {
                         const fromMe = msg.key.fromMe;
                         if (!fromMe) {
-                            try {
-                                if (sessionId === 'wa-bot-ai' || UUID_REGEX.test(sessionId)) {
-                                    await aiBotService.handleIncomingMessage(sessionId, socket, msg);
-                                } else if (sessionId === 'CS-BOT') {
-                                    await csBotService.handleIncomingMessage(sessionId, socket, msg);
-                                }
-                            } catch (err) {
-                                console.error(`❌ [${sessionId}] Bot Error:`, err.message);
-                                logger.error(`❌ [${sessionId}] Bot Error: ${err.message}`);
+                            // Don't await here to allow concurrent handling (especially with delays)
+                            if (sessionId === 'wa-bot-ai' || UUID_REGEX.test(sessionId)) {
+                                aiBotService.handleIncomingMessage(sessionId, socket, msg).catch(err => {
+                                    console.error(`❌ [${sessionId}] AI Bot Error:`, err.message);
+                                });
+                            } else if (sessionId === 'CS-BOT') {
+                                csBotService.handleIncomingMessage(sessionId, socket, msg).catch(err => {
+                                    console.error(`❌ [${sessionId}] CS Bot Error:`, err.message);
+                                });
                             }
                         }
                     }

@@ -340,6 +340,33 @@ const activateKey = async (req, res) => {
     }
 };
 
+const getAIControls = async (req, res) => {
+    try {
+        const userId = req.headers['x-session-id'] || null;
+        const controls = await configService.getAIControls(userId);
+        res.json({ success: true, controls });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+const updateAIControls = async (req, res) => {
+    try {
+        const userId = req.headers['x-session-id'] || null;
+        const { controls } = req.body;
+        const success = await configService.updateAIControls(userId, controls);
+
+        if (success) {
+            const displayName = await configService.getUserDisplay(userId);
+            console.log(`✅ [Config] AI Controls updated for user: ${displayName}`);
+        }
+
+        res.json({ success });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
 module.exports = {
     getStats,
     getPrompts,
@@ -359,5 +386,7 @@ module.exports = {
     addKey,
     updateKey,
     deleteKey,
-    activateKey
+    activateKey,
+    getAIControls,
+    updateAIControls
 };

@@ -42,5 +42,7 @@ router.post('/config/keys', configController.addKey);
 router.put('/config/keys/:id', configController.updateKey);
 router.delete('/config/keys/:id', configController.deleteKey);
 router.patch('/config/keys/:id/activate', configController.activateKey);
+router.get('/config/ai-controls', configController.getAIControls);
+router.put('/config/ai-controls', configController.updateAIControls);
 
 module.exports = router;

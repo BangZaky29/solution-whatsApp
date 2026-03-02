@@ -28,7 +28,7 @@ class ConfigService {
                 if (!error && data) {
                     return {
                         key: data.key_value,
-                        model: data.model_name || 'gemini-1.5-flash',
+                        model: data.model_name || 'gemini-2.5-flash',
                         version: data.api_version || 'v1beta'
                     };
                 }
@@ -46,7 +46,7 @@ class ConfigService {
             if (!globalError && globalData) {
                 return {
                     key: globalData.key_value,
-                    model: globalData.model_name || 'gemini-1.5-flash',
+                    model: globalData.model_name || 'gemini-2.5-flash',
                     version: globalData.api_version || 'v1beta'
                 };
             }
@@ -54,14 +54,14 @@ class ConfigService {
             // 3. System Environment Fallback
             return {
                 key: process.env.GEMINI_API_KEY || null,
-                model: 'gemini-1.5-flash',
+                model: 'gemini-2.5-flash',
                 version: 'v1beta'
             };
         } catch (err) {
             console.error(`❌ [ConfigService] Exception getting API key:`, err.message);
             return {
                 key: process.env.GEMINI_API_KEY || null,
-                model: 'gemini-1.5-flash',
+                model: 'gemini-2.5-flash',
                 version: 'v1beta'
             };
         }
@@ -93,7 +93,7 @@ class ConfigService {
         }
     }
 
-    async addApiKey(name, key, model = 'gemini-1.5-flash', version = 'v1beta', userId = null) {
+    async addApiKey(name, key, model = 'gemini-2.5-flash', version = 'v1beta', userId = null) {
         return await supabase.from(this.apiKeysTable).insert({
             name,
             key_value: key,
@@ -379,6 +379,22 @@ class ConfigService {
         } catch (err) {
             return userId;
         }
+    }
+
+    async getAIControls(userId = null) {
+        const key = userId ? `ai_controls:${userId}` : 'ai_controls';
+        const defaultControls = {
+            is_ai_enabled: true,
+            is_proactive_enabled: true,
+            response_delay_mins: 0
+        };
+        const settings = await this.getSetting(key);
+        return { ...defaultControls, ...(settings || {}) };
+    }
+
+    async updateAIControls(userId, controls) {
+        const key = userId ? `ai_controls:${userId}` : 'ai_controls';
+        return await this.updateSetting(key, controls);
     }
 }
 

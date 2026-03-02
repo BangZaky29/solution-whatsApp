@@ -47,6 +47,13 @@ class AIBotService {
         const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
         if (!messageText) return;
 
+        // NEW: Check for AI enabled and delay
+        const controls = await configService.getAIControls(userId);
+        if (!controls.is_ai_enabled) {
+            console.log(`🔇 [AI-Bot][${sessionId}] AI is DISABLED for this user.`);
+            return;
+        }
+
         const pushName = msg.pushName || 'User';
         const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
         let fullMessageText = messageText;
@@ -84,6 +91,13 @@ class AIBotService {
             });
             const latency = Date.now() - startTime;
 
+            // NEW: Implement response delay
+            if (controls.response_delay_mins > 0) {
+                const delayMs = controls.response_delay_mins * 60 * 1000;
+                console.log(`⏱️ [AI-Bot][${displayName}] Delaying response for ${controls.response_delay_mins} mins...`);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
+
             await whatsappService.sendTextMessage(socket, remoteJid, aiResponse);
             await configService.incrementStat('responses', userId);
 
@@ -110,6 +124,12 @@ class AIBotService {
             const { data: candidates, error } = await query;
 
             if (error || !candidates) return;
+
+            // NEW: Check for proactive enabled
+            const controls = await configService.getAIControls(userId);
+            if (!controls.is_proactive_enabled) {
+                return;
+            }
 
             for (const session of candidates) {
                 const diffMins = (new Date() - new Date(session.last_active)) / 1000 / 60;
