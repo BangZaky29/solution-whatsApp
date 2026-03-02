@@ -4,6 +4,7 @@ const sessionManager = require('../services/whatsapp/session.manager');
  * Middleware to validate WhatsApp session
  */
 const validateSession = (req, res, next) => {
+    const { sessionId } = req.params;
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
     // Ownership check: If it's a UUID session, it MUST belong to the authenticated user
