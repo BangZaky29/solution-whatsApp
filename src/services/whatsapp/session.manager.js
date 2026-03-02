@@ -21,6 +21,9 @@ class SessionManager {
      * @param {object} data 
      */
     setSession(sessionId, data) {
+        if (!data.displayName) {
+            data.displayName = sessionId;
+        }
         this.sessions.set(sessionId, data);
     }
 
@@ -41,6 +44,7 @@ class SessionManager {
         this.sessions.forEach((val, key) => {
             activeSessions.push({
                 id: key,
+                displayName: val.displayName || key,
                 status: val.connectionState.connection,
                 phone: val.connectionState.phoneNumber,
                 name: val.connectionState.name || null

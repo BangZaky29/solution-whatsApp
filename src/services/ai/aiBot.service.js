@@ -2,6 +2,7 @@ const geminiService = require('./gemini.service');
 const whatsappService = require('../whatsapp/whatsapp.service');
 const historyService = require('../common/history.service');
 const configService = require('../common/config.service');
+const sessionManager = require('../whatsapp/session.manager');
 const supabase = require('../../config/supabase');
 
 // UUID detection regex
@@ -54,7 +55,10 @@ class AIBotService {
             if (contextText) fullMessageText = `(Membalas pesan: "${contextText}") ` + messageText;
         }
 
-        console.log(`🤖 [AI-Bot][${sessionId}] Message from ${cleanSender}: "${fullMessageText}"`);
+        const session = sessionManager.getSession(sessionId);
+        const displayName = session?.displayName || sessionId;
+
+        console.log(`🤖 [AI-Bot][${displayName}] Message from ${cleanSender}: "${fullMessageText}"`);
 
         const isPacarZaky = cleanSender.includes('6288293473765');
         let systemPrompt = await configService.getSystemPrompt(userId);
@@ -71,6 +75,8 @@ class AIBotService {
 
         try {
             const activeKeyConfig = await configService.getGeminiApiKey(userId);
+            console.log(`🤖 [AI-Bot][${displayName}] Using API Key model: ${activeKeyConfig.model} (Custom: ${!!activeKeyConfig.key && activeKeyConfig.key !== process.env.GEMINI_API_KEY})`);
+
             const aiResponse = await geminiService.generateResponse(fullMessageText, formattedHistory, systemPrompt, {
                 apiKey: activeKeyConfig.key,
                 modelName: activeKeyConfig.config?.model || activeKeyConfig.model,
@@ -83,7 +89,7 @@ class AIBotService {
 
             await historyService.saveMessage(remoteJid, pushName, { role: 'user', content: fullMessageText }, userId);
             await historyService.saveMessage(remoteJid, pushName, { role: 'model', content: aiResponse, latency }, userId);
-            console.log(`✅ [AI-Bot][${sessionId}] Sent response to ${cleanSender}`);
+            console.log(`✅ [AI-Bot][${displayName}] Sent response to ${cleanSender}`);
         } catch (error) {
             console.error(`❌ [AI-Bot] Error:`, error.message);
         }

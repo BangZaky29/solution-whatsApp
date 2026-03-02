@@ -113,7 +113,9 @@ CREATE TABLE public.wa_sessions (
   value jsonb NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT wa_sessions_pkey PRIMARY KEY (id)
+  user_id uuid UNIQUE,
+  CONSTRAINT wa_sessions_pkey PRIMARY KEY (id),
+  CONSTRAINT wa_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.wa_sessions_local (
   id text NOT NULL,

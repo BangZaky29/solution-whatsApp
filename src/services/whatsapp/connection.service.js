@@ -43,11 +43,13 @@ class ConnectionService {
                 }
             }
 
-            console.log(`\n🚀 [${sessionId}] Connecting to WhatsApp...`);
+            const displayName = await configService.getUserDisplay(sessionId);
+            console.log(`\n🚀 [${displayName}] Connecting to WhatsApp...`);
 
             // Initialize or reset session data
             const sessionData = {
                 socket: null,
+                displayName,
                 clearSessionHandler: null,
                 connectionState: {
                     qr: null,
@@ -87,7 +89,7 @@ class ConnectionService {
                 if (qr) {
                     sessionData.connectionState.qr = qr;
                     sessionData.connectionState.connection = 'waiting_qr';
-                    console.log(`📱 [${sessionId}] QR Code generated - Waiting for scan...`);
+                    console.log(`📱 [${sessionData.displayName}] QR Code generated - Waiting for scan...`);
                 }
 
                 if (connection) {
@@ -97,11 +99,11 @@ class ConnectionService {
                         sessionData.connectionState.qr = null;
                         sessionData.connectionState.phoneNumber = socket.user?.id?.split(':')[0] || null;
                         sessionData.connectionState.name = socket.user?.name || null;
-                        console.log(`\n✅ [${sessionId}] Connected! Phone: ${sessionData.connectionState.phoneNumber}\n`);
+                        console.log(`\n✅ [${sessionData.displayName}] Connected! Phone: ${sessionData.connectionState.phoneNumber}\n`);
 
                         // PERSISTENCE: If sessionId is a UUID, record it in user_sessions
                         if (UUID_REGEX.test(sessionId)) {
-                            console.log(`💾 [${sessionId}] Recording session for user in database...`);
+                            console.log(`💾 [${sessionData.displayName}] Recording session for user in database...`);
                             await configService.upsertUserSession(sessionId, socket.user.id);
                         }
                     }
@@ -111,15 +113,15 @@ class ConnectionService {
                         const statusCode = lastDisconnect?.error?.output?.statusCode;
                         const reason = DisconnectReason[statusCode] || 'Unknown';
 
-                        console.log(`\n❌ [${sessionId}] Disconnection: ${reason} (${statusCode})`);
+                        console.log(`\n❌ [${sessionData.displayName}] Disconnection: ${reason} (${statusCode})`);
 
                         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
                         if (shouldReconnect) {
-                            console.log(`🔄 [${sessionId}] Reconnecting in 10s...`);
+                            console.log(`🔄 [${sessionData.displayName}] Reconnecting in 10s...`);
                             setTimeout(() => this.connect(sessionId), 10000);
                         } else {
-                            console.log(`👋 [${sessionId}] Logged out. Session data will be cleared.`);
+                            console.log(`👋 [${sessionData.displayName}] Logged out. Session data will be cleared.`);
 
                             // PERSISTENCE: Remove session from user_sessions on logout
                             if (UUID_REGEX.test(sessionId)) {
@@ -146,7 +148,7 @@ class ConnectionService {
                         const fromMe = msg.key.fromMe;
                         if (!fromMe) {
                             try {
-                                if (sessionId === 'wa-bot-ai') {
+                                if (sessionId === 'wa-bot-ai' || UUID_REGEX.test(sessionId)) {
                                     await aiBotService.handleIncomingMessage(sessionId, socket, msg);
                                 } else if (sessionId === 'CS-BOT') {
                                     await csBotService.handleIncomingMessage(sessionId, socket, msg);

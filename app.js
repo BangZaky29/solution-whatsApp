@@ -21,6 +21,7 @@ const { errorHandler, notFoundHandler } = require('./src/middleware/error.middle
 // Services
 const sessionManager = require('./src/services/whatsapp/session.manager');
 const connectionService = require('./src/services/whatsapp/connection.service');
+const configService = require('./src/services/common/config.service');
 
 // Routes
 const whatsappRoutes = require('./src/routes/whatsapp.routes');
@@ -83,8 +84,9 @@ app.use(errorHandler);
 // Proactive & Auto-Healing Mechanisms
 // ============================================
 
-// Auto-healing: Restart dead sessions every 5 mins
-setInterval(() => {
+// Auto-healing: Restart dead or missing sessions every 2 mins
+setInterval(async () => {
+    // 1. Check existing sessions in manager
     sessionManager.forEach((session, sessionId) => {
         if (session.connectionState.connection === 'close' ||
             session.connectionState.connection === 'disconnected') {
@@ -94,7 +96,22 @@ setInterval(() => {
             );
         }
     });
-}, 5 * 60 * 1000);
+
+    // 2. Check for sessions that SHOULD be active (from DB) but aren't in manager
+    try {
+        const activeSessions = await configService.getAllUserSessions();
+        for (const sessionId of activeSessions) {
+            if (!sessionManager.getSession(sessionId)) {
+                console.log(`🩹 [Auto-Healing] Restoring missing session from DB: ${sessionId}`);
+                connectionService.connect(sessionId).catch(e =>
+                    console.error(`❌ [Auto-Healing] Failed to restore ${sessionId}:`, e.message)
+                );
+            }
+        }
+    } catch (err) {
+        console.error(`❌ [Auto-Healing] Sync error:`, err.message);
+    }
+}, 2 * 60 * 1000);
 
 // Send presence update periodically
 setInterval(() => {
@@ -146,12 +163,19 @@ async function startServer() {
         console.log(`${'='.repeat(50)}\n`);
     });
 
+    // Auto-restore all active sessions from database
+    const dbSessions = await configService.getAllUserSessions();
     const initialSessions = [
         process.env.SESSION_ID || 'main-session',
-        'CS-BOT'
+        'CS-BOT',
+        ...dbSessions
     ];
 
-    for (const sessionId of initialSessions) {
+    // Remove duplicates and connect
+    const uniqueSessions = [...new Set(initialSessions)];
+    console.log(`📡 [Boot] Restoring ${uniqueSessions.length} sessions...`);
+
+    for (const sessionId of uniqueSessions) {
         connectionService.connect(sessionId).catch(err =>
             console.error(`❌ Auto-start failed for ${sessionId}: ${err.message}`)
         );

@@ -12,7 +12,10 @@ class CSBotService {
     }
 
     async handleIncomingMessage(sessionId, socket, msg) {
-        if (sessionId !== this.sessionId) return;
+        if (sessionId !== this.sessionId) {
+            console.log(`⚠️ [CS-Bot] Received message for WRONG session: ${sessionId}. Expected: ${this.sessionId}`);
+            return;
+        }
 
         const remoteJid = msg.key.remoteJid;
         if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') return;
