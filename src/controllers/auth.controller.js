@@ -182,7 +182,7 @@ const verifyOtp = async (req, res) => {
 
 const getProfile = async (req, res) => {
     try {
-        const { userId } = req.query;
+        const userId = req.userId; // Always from userAuth middleware
         const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
         if (error) throw error;
         res.json({ success: true, user: data });
@@ -193,7 +193,13 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
     try {
-        const { userId, ...updates } = req.body;
+        const userId = req.userId; // Always from userAuth middleware
+        const updates = req.body;
+
+        // Don't allow updating the ID itself
+        delete updates.userId;
+        delete updates.id;
+
         const { data, error } = await supabase
             .from('users')
             .update(updates)

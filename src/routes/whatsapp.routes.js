@@ -7,17 +7,17 @@ const { validateSession } = require('../middleware/session.middleware');
 const { userAuth } = require('../middleware/userAuth.middleware');
 
 // Session Routes
-router.post('/:sessionId/init', sessionController.initSession);
-router.get('/:sessionId/status', validateSession, sessionController.getStatus);
-router.get('/:sessionId/qr', validateSession, sessionController.getQrCode);
-router.post('/:sessionId/logout', validateSession, sessionController.logout);
-router.get('/:sessionId/info', validateSession, sessionController.getInfo);
+router.post('/:sessionId/init', userAuth, sessionController.initSession);
+router.get('/:sessionId/status', userAuth, validateSession, sessionController.getStatus);
+router.get('/:sessionId/qr', userAuth, validateSession, sessionController.getQrCode);
+router.post('/:sessionId/logout', userAuth, validateSession, sessionController.logout);
+router.get('/:sessionId/info', userAuth, validateSession, sessionController.getInfo);
 
 // Messaging Routes
-router.post('/:sessionId/send', validateSession, whatsappController.sendText);
-router.post('/:sessionId/send-media', validateSession, whatsappController.sendMedia);
-router.post('/:sessionId/send-bulk', validateSession, whatsappController.sendBulk);
-router.post('/:sessionId/notify/payment-confirmation', validateSession, whatsappController.sendPaymentConfirmation);
+router.post('/:sessionId/send', userAuth, validateSession, whatsappController.sendText);
+router.post('/:sessionId/send-media', userAuth, validateSession, whatsappController.sendMedia);
+router.post('/:sessionId/send-bulk', userAuth, validateSession, whatsappController.sendBulk);
+router.post('/:sessionId/notify/payment-confirmation', userAuth, validateSession, whatsappController.sendPaymentConfirmation);
 
 // Config & Stats Routes (PROTECTED BY USER AUTH)
 router.get('/stats/history', userAuth, configController.getStats);

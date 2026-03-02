@@ -119,7 +119,11 @@ class AIBotService {
                 .eq('last_sender', 'model')
                 .lt('proactive_count', historyService.proactiveLimit);
 
-            if (userId) query = query.eq('user_id', userId);
+            if (userId) {
+                query = query.eq('user_id', userId);
+            } else {
+                query = query.is('user_id', null);
+            }
 
             const { data: candidates, error } = await query;
 

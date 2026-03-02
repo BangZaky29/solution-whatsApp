@@ -108,7 +108,11 @@ class HistoryService {
                 .select('jid, push_name, msg_count, last_active, history')
                 .order('last_active', { ascending: false });
 
-            if (userId) query = query.eq('user_id', userId);
+            if (userId) {
+                query = query.eq('user_id', userId);
+            } else {
+                query = query.is('user_id', null);
+            }
 
             const { data, error } = await query;
 
@@ -146,7 +150,11 @@ class HistoryService {
                 })
                 .neq('jid', '');
 
-            if (userId) query = query.eq('user_id', userId);
+            if (userId) {
+                query = query.eq('user_id', userId);
+            } else {
+                query = query.is('user_id', null);
+            }
 
             const { error } = await query;
 
