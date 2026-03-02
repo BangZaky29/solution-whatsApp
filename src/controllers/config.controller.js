@@ -9,7 +9,8 @@ const getStats = async (req, res) => {
         const chats = await historyService.getAllChatStats(userId);
         const globalStats = await configService.getSetting(`global_stats:${userId}`) || { requests: 0, responses: 0 };
 
-        console.log(`📊 [getStats] User: ${userId} | Chats found: ${chats.length}`);
+        const displayName = await configService.getUserDisplay(userId);
+        console.log(`📊 [getStats] User: ${displayName} | Chats found: ${chats.length}`);
 
         res.json({
             success: true,
@@ -25,7 +26,8 @@ const getPrompts = async (req, res) => {
     try {
         const userId = req.userId;
         const prompts = await configService.getAllPrompts(userId);
-        console.log(`📜 [getPrompts] User: ${userId} | Prompts found: ${prompts.length}`);
+        const displayName = await configService.getUserDisplay(userId);
+        console.log(`📜 [getPrompts] User: ${displayName} | Prompts found: ${prompts.length}`);
         res.json({ success: true, prompts });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -168,7 +170,8 @@ const addContact = async (req, res) => {
             throw result.error;
         }
 
-        console.log(`✅ [addContact] Berhasil nambahin kontak buat user: ${userId}`);
+        const displayName = await configService.getUserDisplay(userId);
+        console.log(`✅ [addContact] Berhasil nambahin kontak buat user: ${displayName}`);
         res.json({ success: true });
 
     } catch (error) {
@@ -269,7 +272,8 @@ const getKeys = async (req, res) => {
     try {
         const userId = req.userId;
         const keys = await configService.getAllApiKeys(userId);
-        console.log(`🔑 [getKeys] User: ${userId} | Keys found: ${keys.length}`);
+        const displayName = await configService.getUserDisplay(userId);
+        console.log(`🔑 [getKeys] User: ${displayName} | Keys found: ${keys.length}`);
         res.json({ success: true, keys });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

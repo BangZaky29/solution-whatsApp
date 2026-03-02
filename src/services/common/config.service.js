@@ -60,6 +60,12 @@ class ConfigService {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
+
+            if (data.length === 0) {
+                const { data: globalData } = await supabase.from(this.apiKeysTable).select('count').is('user_id', null);
+                console.log(`🔍 [DEBUG] No keys for ${userId}, but global records count:`, globalData?.length || 0);
+            }
+
             return data || [];
         } catch (err) {
             console.error(`❌ [ConfigService] Error fetching API keys:`, err.message);
@@ -161,6 +167,12 @@ class ConfigService {
     async getAllPrompts(userId = null) {
         if (!userId || userId === 'null') return [];
         const { data } = await supabase.from(this.promptsTable).select('*').eq('user_id', userId).order('created_at', { ascending: false });
+
+        if (!data || data.length === 0) {
+            const { data: globalData } = await supabase.from(this.promptsTable).select('count').is('user_id', null);
+            console.log(`🔍 [DEBUG] No prompts for ${userId}, but global records count:`, globalData?.length || 0);
+        }
+
         return data || [];
     }
 
@@ -244,8 +256,13 @@ class ConfigService {
         try {
             if (!userId || userId === 'null' || userId === 'undefined') return 'System';
             const { data } = await supabase.from('users').select('username, full_name').eq('id', userId).single();
-            if (!data) return userId;
-            return data.username || data.full_name || userId;
+            if (!data) {
+                console.log(`👤 [getUserDisplay] No user found for UUID: ${userId}`);
+                return userId;
+            }
+            const name = data.full_name || data.username || userId;
+            console.log(`👤 [getUserDisplay] Resolved ${userId} -> ${name}`);
+            return name;
         } catch (err) { return userId; }
     }
 

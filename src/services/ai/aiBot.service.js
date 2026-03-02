@@ -38,9 +38,11 @@ class AIBotService {
         const senderId = remoteJid.split('@')[0].split(':')[0];
         const cleanSender = senderId.replace(/\D/g, '');
 
+        const displayName = session?.displayName || sessionId;
+
         const isAllowed = await configService.isContactAllowed(remoteJid, userId);
         if (!isAllowed) {
-            console.log(`🚫 [AI-Bot][${sessionId}] Sender ${cleanSender} not whitelisted.`);
+            console.log(`🚫 [AI-Bot][${displayName}] Sender ${cleanSender} not whitelisted.`);
             return;
         }
 
@@ -50,7 +52,7 @@ class AIBotService {
         // NEW: Check for AI enabled and delay
         const controls = await configService.getAIControls(userId);
         if (!controls.is_ai_enabled) {
-            console.log(`🔇 [AI-Bot][${sessionId}] AI is DISABLED for this user.`);
+            console.log(`🔇 [AI-Bot][${displayName}] AI is DISABLED for this user.`);
             return;
         }
 
@@ -61,8 +63,6 @@ class AIBotService {
             const contextText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
             if (contextText) fullMessageText = `(Membalas pesan: "${contextText}") ` + messageText;
         }
-
-        const displayName = session?.displayName || sessionId;
 
         console.log(`🤖 [AI-Bot][${displayName}] Message from ${cleanSender}: "${fullMessageText}"`);
 
@@ -97,61 +97,20 @@ class AIBotService {
                 await new Promise(resolve => setTimeout(resolve, delayMs));
             }
 
-            await whatsappService.sendTextMessage(socket, remoteJid, aiResponse);
+            await socket.sendMessage(remoteJid, { text: aiResponse });
             await configService.incrementStat('responses', userId);
 
+            // Save to history
             await historyService.saveMessage(remoteJid, pushName, { role: 'user', content: fullMessageText }, userId);
-            await historyService.saveMessage(remoteJid, pushName, { role: 'model', content: aiResponse, latency }, userId);
-            console.log(`✅ [AI-Bot][${displayName}] Sent response to ${cleanSender}`);
+            await historyService.saveMessage(remoteJid, 'AI Assistant', { role: 'model', content: aiResponse, latency }, userId);
+
         } catch (error) {
-            console.error(`❌ [AI-Bot] Error:`, error.message);
-        }
-    }
+            console.error(`❌ [AI-Bot][${displayName}] Error:`, error.message);
 
-    async checkAndSendProactiveMessage(sessionId, socket) {
-        const userId = UUID_REGEX.test(sessionId) ? sessionId : null;
-
-        try {
-            let query = supabase
-                .from(historyService.tableName)
-                .select('*')
-                .eq('last_sender', 'model')
-                .lt('proactive_count', historyService.proactiveLimit);
-
-            if (userId) {
-                query = query.eq('user_id', userId);
-            } else {
-                query = query.is('user_id', null);
+            // If API Key error, maybe notify user or fallback gracefully
+            if (error.message.includes('API_KEY_INVALID') || error.message.includes('403')) {
+                await socket.sendMessage(remoteJid, { text: "Maaf, sepertinya ada masalah dengan konfigurasi AI saya. Mohon hubungi pemilik bot." });
             }
-
-            const { data: candidates, error } = await query;
-
-            if (error || !candidates) return;
-
-            // NEW: Check for proactive enabled
-            const controls = await configService.getAIControls(userId);
-            if (!controls.is_proactive_enabled) {
-                return;
-            }
-
-            for (const session of candidates) {
-                const diffMins = (new Date() - new Date(session.last_active)) / 1000 / 60;
-                if (diffMins >= 10 && diffMins <= 60) {
-                    const customPrompt = "Pesan otomatis nudge/percikan obrolan. " + (session.jid.includes('6288293473765') ? "Pacar Zaky, buat baper/manja." : "AI Ramah.");
-
-                    const activeKeyConfig = await configService.getGeminiApiKey(userId);
-                    const aiResponse = await geminiService.generateResponse("...", historyService.formatForPrompt(session.history), customPrompt, {
-                        apiKey: activeKeyConfig.key,
-                        modelName: activeKeyConfig.model,
-                        apiVersion: activeKeyConfig.version
-                    });
-
-                    await whatsappService.sendTextMessage(socket, session.jid, aiResponse);
-                    await historyService.saveMessage(session.jid, session.push_name, { role: 'model', content: aiResponse, isProactive: true }, userId);
-                }
-            }
-        } catch (err) {
-            console.error(`❌ [AI-Bot] Proactive error:`, err.message);
         }
     }
 }

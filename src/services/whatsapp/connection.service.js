@@ -43,7 +43,7 @@ class ConnectionService {
                 }
             }
 
-            const displayName = await configService.getUserDisplay(sessionId);
+            const displayName = await configService.getUserDisplay(userId || sessionId);
             console.log(`\n🚀 [${displayName}] Connecting to WhatsApp...`);
 
             // Initialize or reset session data
