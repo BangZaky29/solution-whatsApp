@@ -115,6 +115,65 @@ class AIBotService {
             }
         }
     }
+
+    async checkAndSendProactiveMessage(sessionId, socket) {
+        const userId = UUID_REGEX.test(sessionId) ? sessionId : null;
+        if (!userId) return;
+
+        try {
+            const controls = await configService.getAIControls(userId);
+            if (!controls.is_proactive_enabled) return;
+
+            const displayName = await configService.getUserDisplay(userId);
+
+            // Get all chats for this user to find candidates
+            const chats = await historyService.getAllChatStats(userId);
+            const now = new Date();
+
+            for (const chat of chats) {
+                const lastActive = new Date(chat.last_active);
+                const diffMins = (now - lastActive) / (1000 * 60);
+
+                // If last message was from user and it's been more than 60 mins but less than 24h
+                if (diffMins > 60 && diffMins < 1440) {
+                    const history = await historyService.getHistory(chat.jid, userId);
+                    if (history.length > 0 && history[history.length - 1].role === 'user') {
+                        console.log(`🤖 [AI-Bot][${displayName}] Sending proactive nudge to ${chat.jid}...`);
+
+                        const systemPrompt = await configService.getSystemPrompt(userId) +
+                            "\n\nIni adalah pesan follow-up otomatis (proactive nudge). Sapa pengguna dengan ramah dan tanyakan apakah ada hal lain yang bisa dibantu, atau lanjutkan topik pembicaraan sebelumnya dengan cara yang sangat halus dan tidak memaksa.";
+
+                        const formattedHistory = historyService.formatForPrompt(history);
+                        const activeKeyConfig = await configService.getGeminiApiKey(userId);
+
+                        // Only if we have an API Key
+                        if (!activeKeyConfig.key) continue;
+
+                        const aiResponse = await geminiService.generateResponse(
+                            "Berikan sapaan ramah atau follow up singkat berdasarkan konteks percakapan di atas.",
+                            formattedHistory,
+                            systemPrompt,
+                            {
+                                apiKey: activeKeyConfig.key,
+                                modelName: activeKeyConfig.model
+                            }
+                        );
+
+                        await socket.sendMessage(chat.jid, { text: aiResponse });
+
+                        // Save as proactive message
+                        await historyService.saveMessage(chat.jid, chat.push_name, {
+                            role: 'model',
+                            content: aiResponse,
+                            isProactive: true
+                        }, userId);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`❌ [AI-Bot][Proactive] Error for ${sessionId}:`, error.message);
+        }
+    }
 }
 
 module.exports = new AIBotService();

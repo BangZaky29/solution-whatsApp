@@ -36,6 +36,7 @@ router.post('/config/target-mode', userAuth, configController.updateTargetMode);
 // Blocked Attempts Routes
 router.get('/config/blocked', userAuth, configController.getBlockedAttempts);
 router.post('/config/blocked/whitelist', userAuth, configController.whitelistBlockedAttempt);
+router.post('/config/blocked/delete', userAuth, configController.deleteBlockedAttempt);
 
 router.get('/history/:jid', userAuth, configController.getHistory);
 router.post('/history/delete', userAuth, configController.deleteHistory);

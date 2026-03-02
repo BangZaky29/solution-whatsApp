@@ -380,6 +380,36 @@ const getBlockedAttempts = async (req, res) => {
     }
 };
 
+const whitelistBlockedAttempt = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { jid, name } = req.body;
+
+        // 1. Add to contacts
+        const result = await configService.addContact(jid, name, userId);
+        if (result.error) throw result.error;
+
+        // 2. Remove from blocked attempts
+        await configService.deleteBlockedAttempt(jid, userId);
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+const deleteBlockedAttempt = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { jid } = req.body;
+
+        await configService.deleteBlockedAttempt(jid, userId);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
 const deleteHistory = async (req, res) => {
     try {
         const userId = req.userId;
@@ -390,7 +420,7 @@ const deleteHistory = async (req, res) => {
         }
 
         const { error } = await supabase
-            .from('wa_bot_history')
+            .from(historyService.tableName)
             .delete()
             .in('jid', jids)
             .eq('user_id', userId);
@@ -411,7 +441,7 @@ const wipeAccountData = async (req, res) => {
 
         // Tables to wipe for this user
         const tables = [
-            'wa_bot_history',
+            historyService.tableName,
             'wa_bot_contacts',
             'wa_bot_prompts',
             'wa_bot_api_keys',
@@ -461,6 +491,7 @@ module.exports = {
     updateAIControls,
     getBlockedAttempts,
     whitelistBlockedAttempt,
+    deleteBlockedAttempt,
     deleteHistory,
     wipeAccountData
 };
