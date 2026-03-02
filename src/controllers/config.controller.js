@@ -216,7 +216,7 @@ const deleteContact = async (req, res) => {
     }
 };
 
-const setTargetMode = async (req, res) => {
+const updateTargetMode = async (req, res) => {
     try {
         const userId = req.userId;
         const { mode } = req.body;
@@ -370,6 +370,73 @@ const updateAIControls = async (req, res) => {
     }
 };
 
+const getBlockedAttempts = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const attempts = await configService.getBlockedAttempts(userId);
+        res.json({ success: true, attempts });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+const deleteHistory = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { jids } = req.body;
+
+        if (!jids || !Array.isArray(jids)) {
+            return res.status(400).json({ success: false, error: 'JIDs array is required' });
+        }
+
+        const { error } = await supabase
+            .from('wa_bot_history')
+            .delete()
+            .in('jid', jids)
+            .eq('user_id', userId);
+
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+const wipeAccountData = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const displayName = await configService.getUserDisplay(userId);
+
+        console.log(`⚠️  [wipeAccountData] DESTRUCTIVE ACTION by ${displayName} (${userId})`);
+
+        // Tables to wipe for this user
+        const tables = [
+            'wa_bot_history',
+            'wa_bot_contacts',
+            'wa_bot_prompts',
+            'wa_bot_api_keys',
+            'wa_bot_blocked_attempts'
+        ];
+
+        for (const table of tables) {
+            const { error } = await supabase
+                .from(table)
+                .delete()
+                .eq('user_id', userId);
+            if (error) {
+                console.error(`❌ [wipeAccountData] Failed to wipe table ${table}:`, error.message);
+            }
+        }
+
+        // Wipe settings/configs in JSON storage if any
+        await supabase.from('wa_bot_settings').delete().eq('user_id', userId);
+
+        res.json({ success: true, message: 'All account data has been wiped successfully.' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
 module.exports = {
     getStats,
     getPrompts,
@@ -381,7 +448,7 @@ module.exports = {
     addContact,
     updateContact,
     deleteContact,
-    setTargetMode,
+    updateTargetMode,
     getHistory,
     getSystemPrompt,
     updateSystemPrompt,
@@ -391,5 +458,9 @@ module.exports = {
     deleteKey,
     activateKey,
     getAIControls,
-    updateAIControls
+    updateAIControls,
+    getBlockedAttempts,
+    whitelistBlockedAttempt,
+    deleteHistory,
+    wipeAccountData
 };

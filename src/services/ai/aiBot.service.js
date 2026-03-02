@@ -42,7 +42,9 @@ class AIBotService {
 
         const isAllowed = await configService.isContactAllowed(remoteJid, userId);
         if (!isAllowed) {
-            console.log(`🚫 [AI-Bot][${displayName}] Sender ${cleanSender} not whitelisted.`);
+            const pushName = msg.pushName || 'Unknown';
+            await configService.logBlockedAttempt(remoteJid, pushName, userId);
+            console.log(`🚫 [AI-Bot][${displayName}] Sender ${cleanSender} NOT whitelisted (Full JID: ${remoteJid}). Logged for discovery.`);
             return;
         }
 

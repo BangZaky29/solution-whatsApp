@@ -11,6 +11,7 @@ class ConfigService {
         this.contactsTable = 'wa_bot_contacts';
         this.apiKeysTable = 'wa_bot_api_keys';
         this.userSessionsTable = 'user_sessions';
+        this.blockedAttemptsTable = 'wa_bot_blocked_attempts';
     }
 
     async getGeminiApiKey(userId = null) {
@@ -34,16 +35,16 @@ class ConfigService {
                 }
             }
 
-            // Disable fallback to global key for strict isolation
+            // Strictly return null if no user-specific key is found. No fallbacks to .env allowed as per user request.
             return {
-                key: process.env.GEMINI_API_KEY || null,
+                key: null,
                 model: 'gemini-2.5-flash',
                 version: 'v1beta'
             };
         } catch (err) {
             console.error(`❌ [ConfigService] Exception getting API key:`, err.message);
             return {
-                key: process.env.GEMINI_API_KEY || null,
+                key: null,
                 model: 'gemini-2.5-flash',
                 version: 'v1beta'
             };
@@ -60,12 +61,6 @@ class ConfigService {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-
-            if (data.length === 0) {
-                const { data: globalData } = await supabase.from(this.apiKeysTable).select('count').is('user_id', null);
-                console.log(`🔍 [DEBUG] No keys for ${userId}, but global records count:`, globalData?.length || 0);
-            }
-
             return data || [];
         } catch (err) {
             console.error(`❌ [ConfigService] Error fetching API keys:`, err.message);
@@ -145,7 +140,7 @@ class ConfigService {
 
     async getSystemPrompt(userId = null) {
         try {
-            if (!userId || userId === 'null') return process.env.AI_BOT_SYSTEM_PROMPT || "Anda adalah asisten AI ramah.";
+            if (!userId || userId === 'null') return "Anda adalah asisten AI ramah.";
 
             const { data: userPrompt, error } = await supabase
                 .from(this.promptsTable)
@@ -157,22 +152,17 @@ class ConfigService {
 
             if (!error && userPrompt) return userPrompt.content;
 
-            const config = await this.getSetting(`system_prompt:${userId}`);
-            return config?.text || process.env.AI_BOT_SYSTEM_PROMPT || "Anda adalah asisten AI ramah.";
+            // If no user-specific active prompt is found, return the default.
+            // No fallbacks to settings table or .env as per user request.
+            return "Anda adalah asisten AI ramah.";
         } catch (err) {
-            return process.env.AI_BOT_SYSTEM_PROMPT || "Anda adalah asisten AI ramah.";
+            return "Anda adalah asisten AI ramah.";
         }
     }
 
     async getAllPrompts(userId = null) {
         if (!userId || userId === 'null') return [];
         const { data } = await supabase.from(this.promptsTable).select('*').eq('user_id', userId).order('created_at', { ascending: false });
-
-        if (!data || data.length === 0) {
-            const { data: globalData } = await supabase.from(this.promptsTable).select('count').is('user_id', null);
-            console.log(`🔍 [DEBUG] No prompts for ${userId}, but global records count:`, globalData?.length || 0);
-        }
-
         return data || [];
     }
 
@@ -194,15 +184,23 @@ class ConfigService {
         const mode = await this.getTargetMode(userId);
         if (mode === 'all') return true;
 
-        const cleanJid = jid.includes('@') ? jid : `${jid.replace(/\D/g, '')}@s.whatsapp.net`;
+        const incomingId = jid.split('@')[0];
+
+        // Fetch all allowed contacts for this user to perform a robust ID-part comparison
         const { data, error } = await supabase
             .from(this.contactsTable)
-            .select('is_allowed')
-            .eq('jid', cleanJid)
+            .select('jid, is_allowed')
             .eq('user_id', userId)
-            .single();
+            .eq('is_allowed', true);
 
-        return !error && data?.is_allowed;
+        if (error || !data) return false;
+
+        // Smart check: Match if exact JID matches OR if only the ID part matches 
+        // (This handles cases where the same person arrives via @s.whatsapp.net or @lid)
+        return data.some(contact => {
+            const dbId = contact.jid.split('@')[0];
+            return contact.jid === jid || dbId === incomingId;
+        });
     }
 
     async getAllowedContacts(userId = null) {
@@ -250,6 +248,43 @@ class ConfigService {
             const { data } = await supabase.from(this.userSessionsTable).select('user_id');
             return data?.map(s => s.user_id) || [];
         } catch (err) { return []; }
+    }
+
+    async logBlockedAttempt(jid, pushName, userId = null) {
+        if (!userId || userId === 'null') return;
+        try {
+            await supabase
+                .from(this.blockedAttemptsTable)
+                .upsert({
+                    user_id: userId,
+                    jid: jid,
+                    push_name: pushName,
+                    attempted_at: new Date().toISOString()
+                }, { onConflict: 'user_id,jid' });
+        } catch (err) { /* ignore */ }
+    }
+
+    async getBlockedAttempts(userId = null) {
+        if (!userId || userId === 'null') return [];
+        try {
+            const { data } = await supabase
+                .from(this.blockedAttemptsTable)
+                .select('*')
+                .eq('user_id', userId)
+                .order('attempted_at', { ascending: false });
+            return data || [];
+        } catch (err) { return []; }
+    }
+
+    async deleteBlockedAttempt(jid, userId = null) {
+        if (!userId || userId === 'null') return;
+        try {
+            await supabase
+                .from(this.blockedAttemptsTable)
+                .delete()
+                .eq('user_id', userId)
+                .eq('jid', jid);
+        } catch (err) { /* ignore */ }
     }
 
     async getUserDisplay(userId) {
