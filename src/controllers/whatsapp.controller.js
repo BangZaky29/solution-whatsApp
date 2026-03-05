@@ -153,9 +153,38 @@ const sendPaymentConfirmation = async (req, res) => {
     }
 };
 
+/**
+ * GET /api/whatsapp/logs
+ */
+const getLogs = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const supabase = require('../../config/supabase');
+        const { data, error } = await supabase
+            .from('wa_bot_logs')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (error) throw error;
+
+        // Reverse to get chronological order for UI
+        res.json({ success: true, logs: data.reverse() });
+    } catch (error) {
+        console.error('Error fetching logs:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch logs' });
+    }
+};
+
 module.exports = {
     sendText,
     sendMedia,
     sendBulk,
-    sendPaymentConfirmation
+    sendPaymentConfirmation,
+    getLogs
 };

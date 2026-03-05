@@ -4,6 +4,7 @@ const historyService = require('../common/history.service');
 const configService = require('../common/config.service');
 const sessionManager = require('../whatsapp/session.manager');
 const supabase = require('../../config/supabase');
+const logService = require('../common/log.service');
 
 // Payment & Token System
 const paymentService = require('../payment/payment.service');
@@ -49,6 +50,7 @@ class AIBotService {
             const pushName = msg.pushName || 'Unknown';
             await configService.logBlockedAttempt(remoteJid, pushName, userId);
             console.log(`🚫 [AI-Bot][${displayName}] Sender ${cleanSender} NOT whitelisted (Full JID: ${remoteJid}). Logged for discovery.`);
+            logService.warn(userId, sessionId, `Sender ${cleanSender} NOT whitelisted. Logged to blocked attempts.`);
             return;
         }
 
@@ -61,6 +63,7 @@ class AIBotService {
                 const csBotNumber = csBotJid ? csBotJid.split('@')[0].split(':')[0].replace(/\D/g, '') : null;
                 if (csBotNumber && cleanSender === csBotNumber) {
                     console.log(`🤖 [AI-Bot][${displayName}] Skipping CS-BOT message from ${cleanSender}. No response, no token deduction.`);
+                    logService.system(userId, sessionId, `Skipping CS-BOT message to prevent self-loop. No token deduction.`);
                     return;
                 }
             } catch (e) {
@@ -75,6 +78,7 @@ class AIBotService {
         const controls = await configService.getAIControls(userId);
         if (!controls.is_ai_enabled) {
             console.log(`🔇 [AI-Bot][${displayName}] AI is DISABLED for this user.`);
+            logService.warn(userId, sessionId, `AI processing is DISABLED in settings. Ignoring message.`);
             return;
         }
 
@@ -83,6 +87,7 @@ class AIBotService {
             const subscription = await paymentService.getActiveSubscription(userId);
             if (!subscription) {
                 console.log(`💳 [AI-Bot][${displayName}] No active subscription. Blocking.`);
+                logService.error(userId, sessionId, `No active subscription found. Blocked AI response.`);
                 await socket.sendMessage(remoteJid, {
                     text: '⚠️ Langganan Anda tidak aktif. Silakan berlangganan di dashboard WA-BOT-AI untuk menggunakan fitur AI.'
                 });
@@ -92,6 +97,7 @@ class AIBotService {
             const hasTokens = await paymentService.hasEnoughTokens(userId, 10);
             if (!hasTokens) {
                 console.log(`🎫 [AI-Bot][${displayName}] Insufficient tokens. Blocking.`);
+                logService.error(userId, sessionId, `Insufficient tokens (Requires 10). Blocked AI response.`);
                 await socket.sendMessage(remoteJid, {
                     text: '⚠️ Token Anda habis. Silakan top-up token di dashboard WA-BOT-AI.'
                 });
@@ -113,6 +119,7 @@ class AIBotService {
         }
 
         console.log(`🤖 [AI-Bot][${displayName}] Message from ${cleanSender}: "${fullMessageText}"`);
+        logService.info(userId, sessionId, `Received message from ${cleanSender}: "${fullMessageText.substring(0, 50)}..."`);
 
         const isPacarZaky = cleanSender.includes('6288293473765');
         let systemPrompt = await configService.getSystemPrompt(userId);
@@ -130,6 +137,7 @@ class AIBotService {
         try {
             const activeKeyConfig = await configService.getGeminiApiKey(userId);
             console.log(`🤖 [AI-Bot][${displayName}] Using API Key model: ${activeKeyConfig.model} (Custom: ${!!activeKeyConfig.key && activeKeyConfig.key !== process.env.GEMINI_API_KEY})`);
+            logService.system(userId, sessionId, `Invoking LLM Model: ${activeKeyConfig.model}`);
 
             const aiResponse = await geminiService.generateResponse(fullMessageText, formattedHistory, systemPrompt, {
                 apiKey: activeKeyConfig.key,
@@ -137,6 +145,7 @@ class AIBotService {
                 apiVersion: activeKeyConfig.config?.version || activeKeyConfig.version
             });
             const latency = Date.now() - startTime;
+            logService.success(userId, sessionId, `AI Response generated in ${latency}ms`);
 
             // NEW: Implement response delay
             if (controls.response_delay_mins > 0) {
@@ -153,6 +162,7 @@ class AIBotService {
                 const deductResult = await paymentService.deductTokens(userId, 10, 'ai_response', remoteJid);
                 if (deductResult.success) {
                     console.log(`🎫 [AI-Bot][${displayName}] Deducted 10 tokens. Remaining: ${deductResult.balance}`);
+                    logService.system(userId, sessionId, `Deducted 10 tokens. Remaining balance: ${deductResult.balance}`);
                     // Item #8: Only warn at milestone 100 exactly
                     if (deductResult.balance > 0 && deductResult.balance <= 100 && deductResult.balance + 10 > 100) {
                         const { data: user } = await supabase.from('users').select('phone, full_name, username').eq('id', userId).single();
@@ -169,6 +179,7 @@ class AIBotService {
 
         } catch (error) {
             console.error(`❌ [AI-Bot][${displayName}] Error:`, error.message);
+            logService.error(userId, sessionId, `AI Generation failed: ${error.message}`);
 
             // If API Key error, maybe notify user or fallback gracefully
             if (error.message.includes('API_KEY_INVALID') || error.message.includes('403')) {

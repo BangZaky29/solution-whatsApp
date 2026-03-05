@@ -18,6 +18,7 @@ router.post('/:sessionId/send', userAuth, validateSession, whatsappController.se
 router.post('/:sessionId/send-media', userAuth, validateSession, whatsappController.sendMedia);
 router.post('/:sessionId/send-bulk', userAuth, validateSession, whatsappController.sendBulk);
 router.post('/:sessionId/notify/payment-confirmation', userAuth, validateSession, whatsappController.sendPaymentConfirmation);
+router.get('/logs', userAuth, whatsappController.getLogs);
 
 // Config & Stats Routes (PROTECTED BY USER AUTH)
 router.get('/stats/history', userAuth, configController.getStats);

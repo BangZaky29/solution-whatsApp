@@ -194,3 +194,13 @@ CREATE TABLE public.wa_sessions_local (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT wa_sessions_local_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.wa_bot_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  session_id text,
+  level text NOT NULL,
+  message text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_bot_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT wa_bot_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
