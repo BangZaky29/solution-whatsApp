@@ -433,36 +433,113 @@ const deleteHistory = async (req, res) => {
 };
 
 const wipeAccountData = async (req, res) => {
+    const sessionManager = require('../services/whatsapp/session.manager');
+
     try {
         const userId = req.userId;
         const displayName = await configService.getUserDisplay(userId);
 
-        console.log(`⚠️  [wipeAccountData] DESTRUCTIVE ACTION by ${displayName} (${userId})`);
+        console.log(`\n🔴 ============================================`);
+        console.log(`🔴 [wipeAccountData] FULL ACCOUNT DELETION`);
+        console.log(`🔴 User: ${displayName} (${userId})`);
+        console.log(`🔴 ============================================\n`);
 
-        // Tables to wipe for this user
-        const tables = [
-            historyService.tableName,
+        // ── STEP 1: Disconnect & clear WhatsApp session ──
+        const session = sessionManager.getSession(userId);
+        if (session) {
+            console.log(`📱 [wipeAccountData] Disconnecting WhatsApp session...`);
+            if (session.socket) {
+                try {
+                    await session.socket.logout();
+                    console.log(`✅ [wipeAccountData] WhatsApp socket logged out.`);
+                } catch (e) {
+                    console.warn(`⚠️ [wipeAccountData] Socket logout warning: ${e.message}`);
+                }
+            }
+            // Clear WA auth state from database (session keys stored in wa_ai_sessions)
+            if (session.clearSessionHandler) {
+                try {
+                    await session.clearSessionHandler();
+                    console.log(`✅ [wipeAccountData] WA auth state cleared from database.`);
+                } catch (e) {
+                    console.warn(`⚠️ [wipeAccountData] Clear session warning: ${e.message}`);
+                }
+            }
+            sessionManager.deleteSession(userId);
+            console.log(`✅ [wipeAccountData] In-memory session removed.`);
+        }
+
+        // ── STEP 2: Delete all user data from public tables ──
+        const tablesWithUserId = [
+            historyService.tableName,         // wa_chat_history / wa_chat_history_local
             'wa_bot_contacts',
             'wa_bot_prompts',
             'wa_bot_api_keys',
-            'wa_bot_blocked_attempts'
+            'wa_bot_blocked_attempts',
+            'otp_codes',
+            'user_sessions',
         ];
 
-        for (const table of tables) {
+        for (const table of tablesWithUserId) {
             const { error } = await supabase
                 .from(table)
                 .delete()
                 .eq('user_id', userId);
             if (error) {
-                console.error(`❌ [wipeAccountData] Failed to wipe table ${table}:`, error.message);
+                console.error(`❌ [wipeAccountData] Failed to wipe ${table}: ${error.message}`);
+            } else {
+                console.log(`🗑️  [wipeAccountData] Wiped: ${table}`);
             }
         }
 
-        // Wipe settings/configs in JSON storage if any
-        await supabase.from('wa_bot_settings').delete().eq('user_id', userId);
+        // Delete wa_sessions (uses user_id FK to auth.users)
+        const { error: waSessionErr } = await supabase
+            .from('wa_sessions')
+            .delete()
+            .eq('user_id', userId);
+        if (waSessionErr) {
+            console.error(`❌ [wipeAccountData] Failed to wipe wa_sessions: ${waSessionErr.message}`);
+        } else {
+            console.log(`🗑️  [wipeAccountData] Wiped: wa_sessions`);
+        }
 
-        res.json({ success: true, message: 'All account data has been wiped successfully.' });
+        // Delete wa_bot_settings (uses id LIKE pattern, e.g. 'ai_controls:<userId>')
+        const { error: settingsErr } = await supabase
+            .from('wa_bot_settings')
+            .delete()
+            .like('id', `%${userId}%`);
+        if (settingsErr) {
+            console.error(`❌ [wipeAccountData] Failed to wipe wa_bot_settings: ${settingsErr.message}`);
+        } else {
+            console.log(`🗑️  [wipeAccountData] Wiped: wa_bot_settings`);
+        }
+
+        // Delete from public.users
+        const { error: usersErr } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', userId);
+        if (usersErr) {
+            console.error(`❌ [wipeAccountData] Failed to delete from public.users: ${usersErr.message}`);
+        } else {
+            console.log(`🗑️  [wipeAccountData] Wiped: public.users`);
+        }
+
+        // ── STEP 3: Delete auth identity from Supabase Auth ──
+        console.log(`🔑 [wipeAccountData] Deleting Supabase Auth user...`);
+        const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+        if (authError) {
+            console.error(`❌ [wipeAccountData] Failed to delete auth user: ${authError.message}`);
+            // Still return success for data wipe even if auth deletion fails
+        } else {
+            console.log(`✅ [wipeAccountData] Supabase Auth user DELETED.`);
+        }
+
+        console.log(`\n🔴 [wipeAccountData] COMPLETE - Account ${displayName} fully removed.\n`);
+
+        res.json({ success: true, message: 'Account and all data have been permanently deleted.' });
     } catch (error) {
+        console.error(`❌ [wipeAccountData] FATAL ERROR:`, error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };

@@ -57,6 +57,15 @@ CREATE TABLE public.wa_bot_api_keys (
   CONSTRAINT wa_bot_api_keys_pkey PRIMARY KEY (id),
   CONSTRAINT wa_bot_api_keys_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.wa_bot_blocked_attempts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  jid text NOT NULL,
+  push_name text,
+  attempted_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_bot_blocked_attempts_pkey PRIMARY KEY (id),
+  CONSTRAINT wa_bot_blocked_attempts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.wa_bot_contacts (
   jid text NOT NULL,
   push_name text,

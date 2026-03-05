@@ -92,6 +92,16 @@
     {
         "schemaname": "public",
         "tablename": "wa_chat_history",
+        "policyname": "Allow individual history delete",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "DELETE",
+        "qual": "(user_id = auth.uid())",
+        "with_check": null
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_chat_history",
         "policyname": "Users can manage their own history",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
@@ -108,6 +118,16 @@
         "cmd": "ALL",
         "qual": "(user_id = auth.uid())",
         "with_check": "(user_id = auth.uid())"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_chat_history_local",
+        "policyname": "Allow individual history delete",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "DELETE",
+        "qual": "(user_id = auth.uid())",
+        "with_check": null
     },
     {
         "schemaname": "public",
