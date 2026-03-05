@@ -18,7 +18,7 @@ const configService = require('../common/config.service');
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 class ConnectionService {
-    async connect(sessionId = 'main-session', userId = null) {
+    async connect(sessionId = 'main-session', userId = null, phoneNumber = null) {
         try {
             // Prevent multiple simultaneous connection attempts for the same sessionId
             const existingSession = sessionManager.getSession(sessionId);
@@ -55,7 +55,8 @@ class ConnectionService {
                 connectionState: {
                     qr: null,
                     connection: 'connecting',
-                    phoneNumber: existingSession?.connectionState?.phoneNumber || null
+                    phoneNumber: phoneNumber || existingSession?.connectionState?.phoneNumber || null,
+                    pairingCode: null
                 }
             };
             sessionManager.setSession(sessionId, sessionData);
@@ -84,6 +85,23 @@ class ConnectionService {
             });
 
             sessionData.socket = socket;
+
+            // Pairing Code Logic
+            if (phoneNumber) {
+                const cleanNumber = phoneNumber.replace(/\D/g, '');
+                if (cleanNumber) {
+                    console.log(`🌀 [${displayName}] Requesting Pairing Code for: ${cleanNumber}`);
+                    setTimeout(async () => {
+                        try {
+                            const code = await socket.requestPairingCode(cleanNumber);
+                            sessionData.connectionState.pairingCode = code;
+                            console.log(`🔑 [${displayName}] Pairing Code Generated: ${code}`);
+                        } catch (err) {
+                            console.error(`❌ [${displayName}] Failed to generate pairing code:`, err.message);
+                        }
+                    }, 3000);
+                }
+            }
 
             // connection.update handler
             socket.ev.on('connection.update', async (update) => {

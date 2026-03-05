@@ -10,7 +10,8 @@ const initSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const userId = req.userId;
-        await connectionService.connect(sessionId, userId);
+        const { phoneNumber } = req.body; // New: pairing code support
+        await connectionService.connect(sessionId, userId, phoneNumber);
         res.json({
             success: true,
             message: `Initializing session '${sessionId}' for user ${userId}...`
@@ -159,10 +160,40 @@ const getInfo = (req, res) => {
     }
 };
 
+/**
+ * GET /api/whatsapp/:sessionId/pairing-code
+ */
+const getPairingCode = (req, res) => {
+    try {
+        if (!req.whatsappSession) {
+            return res.json({ success: false, message: 'Session not initialized' });
+        }
+        const { connectionState } = req.whatsappSession;
+
+        if (!connectionState.pairingCode) {
+            return res.json({
+                success: false,
+                message: connectionState.connection === 'open'
+                    ? 'Already connected'
+                    : 'Pairing code not available yet, please wait...'
+            });
+        }
+
+        res.json({
+            success: true,
+            pairingCode: connectionState.pairingCode,
+            message: 'Pair your device using this code'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
 module.exports = {
     initSession,
     getStatus,
     getQrCode,
     logout,
-    getInfo
+    getInfo,
+    getPairingCode
 };
