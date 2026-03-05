@@ -26,16 +26,12 @@ const configService = require('./src/services/common/config.service');
 // Routes
 const whatsappRoutes = require('./src/routes/whatsapp.routes');
 const authRoutes = require('./src/routes/auth.routes');
+const paymentRoutes = require('./src/routes/payment.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Security middleware
-app.use(helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' }
-}));
-
-// CORS
+// CORS — MUST be before helmet
 app.use(cors({
     origin: [
         'https://admin-controller.nuansasolution.id',
@@ -45,7 +41,18 @@ app.use(cors({
         'http://localhost:5174'
     ],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-Id', 'Accept'],
+}));
+
+// Handle preflight explicitly
+app.options('*', cors());
+
+// Security middleware (after CORS)
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: false,
+    crossOriginEmbedderPolicy: false,
 }));
 
 // Body parser
@@ -75,6 +82,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Error Handling
 app.use(notFoundHandler);
@@ -145,6 +153,40 @@ setInterval(async () => {
     const historyService = require('./src/services/common/history.service');
     await historyService.clearAllHistory();
 }, 24 * 60 * 60 * 1000);
+
+// ============================================
+// Subscription Expiry Cron (every 1 hour)
+// ============================================
+setInterval(async () => {
+    try {
+        const paymentService = require('./src/services/payment/payment.service');
+        const notificationService = require('./src/services/payment/notification.service');
+
+        // 1. Expire overdue subscriptions
+        const expired = await paymentService.checkAndExpireSubscriptions();
+        for (const sub of expired) {
+            try {
+                const { data: user } = await require('./src/config/supabase')
+                    .from('users')
+                    .select('phone, full_name, username')
+                    .eq('id', sub.user_id)
+                    .single();
+
+                if (user?.phone) {
+                    await notificationService.notifySubscriptionExpired(
+                        user.phone,
+                        user.full_name || user.username || 'User',
+                        sub.packages?.display_name || 'Unknown'
+                    );
+                }
+            } catch (e) {
+                console.error(`❌ [Cron] Notification error for expired sub:`, e.message);
+            }
+        }
+    } catch (err) {
+        console.error(`❌ [Cron] Subscription expiry check error:`, err.message);
+    }
+}, 60 * 60 * 1000); // Every 1 hour
 
 // ============================================
 // Start Server

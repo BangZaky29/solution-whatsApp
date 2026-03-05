@@ -11,6 +11,67 @@ CREATE TABLE public.otp_codes (
   CONSTRAINT otp_codes_pkey PRIMARY KEY (id),
   CONSTRAINT otp_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.packages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  display_name text NOT NULL,
+  price integer NOT NULL,
+  token_amount integer NOT NULL,
+  duration_days integer NOT NULL DEFAULT 30,
+  features jsonb NOT NULL DEFAULT '{}'::jsonb,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT packages_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.subscriptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  package_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text,
+  started_at timestamp with time zone,
+  expires_at timestamp with time zone,
+  midtrans_order_id text UNIQUE,
+  midtrans_transaction_id text,
+  payment_method text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT subscriptions_pkey PRIMARY KEY (id),
+  CONSTRAINT subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT subscriptions_package_id_fkey FOREIGN KEY (package_id) REFERENCES public.packages(id)
+);
+CREATE TABLE public.token_balances (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  balance integer NOT NULL DEFAULT 0,
+  total_used integer NOT NULL DEFAULT 0,
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT token_balances_pkey PRIMARY KEY (id),
+  CONSTRAINT token_balances_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.token_transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  amount integer NOT NULL,
+  type text NOT NULL,
+  description text,
+  reference_id text,
+  balance_after integer NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT token_transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT token_transactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.topup_orders (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  token_amount integer NOT NULL,
+  price integer NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text,
+  midtrans_order_id text UNIQUE,
+  midtrans_transaction_id text,
+  payment_method text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT topup_orders_pkey PRIMARY KEY (id),
+  CONSTRAINT topup_orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.user_sessions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid UNIQUE,

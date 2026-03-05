@@ -5,6 +5,10 @@ const configService = require('../common/config.service');
 const sessionManager = require('../whatsapp/session.manager');
 const supabase = require('../../config/supabase');
 
+// Payment & Token System
+const paymentService = require('../payment/payment.service');
+const notificationService = require('../payment/notification.service');
+
 // UUID detection regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -58,6 +62,32 @@ class AIBotService {
             return;
         }
 
+        // ── TOKEN ENFORCEMENT ──
+        if (userId && UUID_REGEX.test(userId)) {
+            const subscription = await paymentService.getActiveSubscription(userId);
+            if (!subscription) {
+                console.log(`💳 [AI-Bot][${displayName}] No active subscription. Blocking.`);
+                await socket.sendMessage(remoteJid, {
+                    text: '⚠️ Langganan Anda tidak aktif. Silakan berlangganan di dashboard WA-BOT-AI untuk menggunakan fitur AI.'
+                });
+                return;
+            }
+
+            const hasTokens = await paymentService.hasEnoughTokens(userId, 10);
+            if (!hasTokens) {
+                console.log(`🎫 [AI-Bot][${displayName}] Insufficient tokens. Blocking.`);
+                await socket.sendMessage(remoteJid, {
+                    text: '⚠️ Token Anda habis. Silakan top-up token di dashboard WA-BOT-AI.'
+                });
+                // Notify via CS-BOT
+                const { data: user } = await supabase.from('users').select('phone, full_name, username').eq('id', userId).single();
+                if (user?.phone) {
+                    await notificationService.notifyTokenDepleted(user.phone, user.full_name || user.username || 'User');
+                }
+                return;
+            }
+        }
+
         const pushName = msg.pushName || 'User';
         const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
         let fullMessageText = messageText;
@@ -102,6 +132,21 @@ class AIBotService {
             await socket.sendMessage(remoteJid, { text: aiResponse });
             await configService.incrementStat('responses', userId);
 
+            // ── DEDUCT TOKENS ──
+            if (userId && UUID_REGEX.test(userId)) {
+                const deductResult = await paymentService.deductTokens(userId, 10, 'ai_response', remoteJid);
+                if (deductResult.success) {
+                    console.log(`🎫 [AI-Bot][${displayName}] Deducted 10 tokens. Remaining: ${deductResult.balance}`);
+                    // Warn if tokens are getting low (< 100)
+                    if (deductResult.balance > 0 && deductResult.balance <= 100) {
+                        const { data: user } = await supabase.from('users').select('phone, full_name, username').eq('id', userId).single();
+                        if (user?.phone) {
+                            await notificationService.notifyTokenLow(user.phone, user.full_name || user.username || 'User', deductResult.balance);
+                        }
+                    }
+                }
+            }
+
             // Save to history
             await historyService.saveMessage(remoteJid, pushName, { role: 'user', content: fullMessageText }, userId);
             await historyService.saveMessage(remoteJid, 'AI Assistant', { role: 'model', content: aiResponse, latency }, userId);
@@ -123,6 +168,12 @@ class AIBotService {
         try {
             const controls = await configService.getAIControls(userId);
             if (!controls.is_proactive_enabled) return;
+
+            // Check subscription supports proactive & has tokens
+            const features = await paymentService.getUserFeatures(userId);
+            if (!features.has_subscription || !features.proactive_enabled) return;
+            const hasTokens = await paymentService.hasEnoughTokens(userId, 5);
+            if (!hasTokens) return;
 
             const displayName = await configService.getUserDisplay(userId);
 
@@ -160,6 +211,9 @@ class AIBotService {
                         );
 
                         await socket.sendMessage(chat.jid, { text: aiResponse });
+
+                        // Deduct 5 tokens for proactive nudge
+                        await paymentService.deductTokens(userId, 5, 'proactive_nudge', chat.jid);
 
                         // Save as proactive message
                         await historyService.saveMessage(chat.jid, chat.push_name, {

@@ -1,6 +1,8 @@
 const supabase = require('../config/supabase');
 const csBotService = require('../services/ai/csBot.service');
 const crypto = require('crypto');
+const paymentService = require('../services/payment/payment.service');
+const notificationService = require('../services/payment/notification.service');
 
 /**
  * Normalizes Indonesian phone numbers to 62... format
@@ -83,6 +85,14 @@ const register = async (req, res) => {
             success: true,
             message: 'Registration successful. OTP sent.',
             userId: user.id
+        });
+
+        // Grant trial (async, don't block response)
+        paymentService.grantTrial(user.id).then(() => {
+            notificationService.notifyRegistration(phone, full_name || username || 'User');
+            console.log(`🎉 [Register] Trial granted for ${username}`);
+        }).catch(err => {
+            console.error(`❌ [Register] Failed to grant trial:`, err.message);
         });
 
     } catch (error) {
