@@ -2,6 +2,7 @@ const historyService = require('../services/common/history.service');
 const configService = require('../services/common/config.service');
 const supabase = require('../config/supabase');
 const aiBotService = require('../services/ai/aiBot.service');
+const paymentService = require('../services/payment/payment.service');
 
 const getStats = async (req, res) => {
     try {
@@ -56,6 +57,20 @@ const upsertPrompt = async (req, res) => {
                 .select();
         } else {
             // Insert new
+            // Item #2: Feature limit check — max_prompts
+            const features = await paymentService.getUserFeatures(userId);
+            if (features.has_subscription && features.max_prompts < 999) {
+                const { count } = await supabase
+                    .from('wa_bot_prompts')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', userId);
+                if (count >= features.max_prompts) {
+                    return res.status(403).json({
+                        success: false,
+                        error: `Batas prompt tercapai (${features.max_prompts}). Upgrade paket untuk menambah lebih banyak.`
+                    });
+                }
+            }
             result = await supabase
                 .from('wa_bot_prompts')
                 .insert(promptData)
@@ -150,6 +165,21 @@ const addContact = async (req, res) => {
                 success: false,
                 error: 'Header x-session-id wajib diisi dengan UUID yang valid.'
             });
+        }
+
+        // Item #2: Feature limit check — max_contacts
+        const features = await paymentService.getUserFeatures(userId);
+        if (features.has_subscription && features.max_contacts < 999) {
+            const { count } = await supabase
+                .from('wa_bot_contacts')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId);
+            if (count >= features.max_contacts) {
+                return res.status(403).json({
+                    success: false,
+                    error: `Batas kontak tercapai (${features.max_contacts}). Upgrade paket untuk menambah lebih banyak.`
+                });
+            }
         }
 
         // 2. Panggil Service
@@ -284,6 +314,28 @@ const addKey = async (req, res) => {
     try {
         const userId = req.userId;
         const { name, key, model, version } = req.body;
+
+        // Item #2: Feature limit check — max_api_keys
+        const features = await paymentService.getUserFeatures(userId);
+        if (features.max_api_keys === 0) {
+            return res.status(403).json({
+                success: false,
+                error: 'Paket Anda tidak mendukung BYOK (Bring Your Own Key). Upgrade ke Premium atau Pro.'
+            });
+        }
+        if (features.has_subscription && features.max_api_keys < 999) {
+            const { count } = await supabase
+                .from('wa_bot_api_keys')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId);
+            if (count >= features.max_api_keys) {
+                return res.status(403).json({
+                    success: false,
+                    error: `Batas API Key tercapai (${features.max_api_keys}). Upgrade paket untuk menambah lebih banyak.`
+                });
+            }
+        }
+
         const { error } = await configService.addApiKey(name, key, model, version, userId);
         if (error) {
             console.error(`❌ [addKey] Error:`, error.message);

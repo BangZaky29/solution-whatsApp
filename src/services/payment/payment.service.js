@@ -160,47 +160,37 @@ class PaymentService {
     }
 
     async creditTokens(userId, amount, type, description, referenceId = null) {
-        const balance = await this.getTokenBalance(userId);
-        const newBalance = balance.balance + amount;
-
-        // Update balance
-        const { error: balErr } = await supabase
-            .from(this.tokenBalancesTable)
-            .update({ balance: newBalance, updated_at: new Date().toISOString() })
-            .eq('user_id', userId);
-        if (balErr) throw balErr;
-
-        // Log transaction
-        await this._logTokenTransaction(userId, amount, type, description, referenceId, newBalance);
-
+        const { data, error } = await supabase.rpc('credit_tokens_atomic', {
+            p_user_id: userId,
+            p_amount: amount,
+            p_type: type,
+            p_description: description,
+            p_reference_id: referenceId,
+        });
+        if (error) throw error;
+        const newBalance = data;
         console.log(`💰 [PaymentService] Credited ${amount} tokens to user ${userId}. New balance: ${newBalance}`);
         return newBalance;
     }
 
     async deductTokens(userId, amount, type, referenceId = null) {
-        const balance = await this.getTokenBalance(userId);
-        if (balance.balance < amount) {
+        const { data, error } = await supabase.rpc('deduct_tokens_atomic', {
+            p_user_id: userId,
+            p_amount: amount,
+            p_type: type,
+            p_description: `Deducted: ${type}`,
+            p_reference_id: referenceId,
+        });
+        if (error) throw error;
+
+        // RPC returns [{new_balance, new_total_used}], -1 means insufficient
+        const result = Array.isArray(data) ? data[0] : data;
+        if (!result || result.new_balance === -1) {
+            const balance = await this.getTokenBalance(userId);
             return { success: false, reason: 'insufficient_tokens', balance: balance.balance };
         }
 
-        const newBalance = balance.balance - amount;
-        const newTotalUsed = balance.total_used + amount;
-
-        // Update balance
-        const { error: balErr } = await supabase
-            .from(this.tokenBalancesTable)
-            .update({
-                balance: newBalance,
-                total_used: newTotalUsed,
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
-        if (balErr) throw balErr;
-
-        // Log transaction
-        await this._logTokenTransaction(userId, -amount, type, `Deducted: ${type}`, referenceId, newBalance);
-
-        return { success: true, balance: newBalance };
+        return { success: true, balance: result.new_balance };
     }
 
     async hasEnoughTokens(userId, required = 10) {
@@ -334,21 +324,8 @@ class PaymentService {
         return data || [];
     }
 
-    async _logTokenTransaction(userId, amount, type, description, referenceId, balanceAfter) {
-        const { error } = await supabase
-            .from(this.tokenTransactionsTable)
-            .insert({
-                user_id: userId,
-                amount,
-                type,
-                description,
-                reference_id: referenceId,
-                balance_after: balanceAfter,
-            });
-        if (error) {
-            console.error('❌ [PaymentService] Failed to log token transaction:', error.message);
-        }
-    }
+    // _logTokenTransaction is now handled atomically inside SQL RPC functions
+    // (deduct_tokens_atomic & credit_tokens_atomic)
 
     // ═══════════════════════════════════════════
     // FEATURE LIMITS (per package)

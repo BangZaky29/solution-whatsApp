@@ -41,6 +41,35 @@ const subscribe = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Package not found' });
         }
 
+        // Item #3: Check for existing pending subscription
+        const { data: pendingSub } = await supabase
+            .from('subscriptions')
+            .select('midtrans_order_id')
+            .eq('user_id', userId)
+            .eq('status', 'pending')
+            .eq('package_id', packageId)
+            .limit(1)
+            .maybeSingle();
+
+        if (pendingSub) {
+            // Return existing pending order's Snap token
+            try {
+                const existingStatus = await midtransService.getTransactionStatus(pendingSub.midtrans_order_id);
+                if (existingStatus.status_code === '201') {
+                    // Still pending at Midtrans — redirect to same payment
+                    return res.json({
+                        success: true,
+                        orderId: pendingSub.midtrans_order_id,
+                        redirectUrl: existingStatus.redirect_url || null,
+                        message: 'Anda sudah memiliki pesanan menunggu pembayaran.',
+                    });
+                }
+            } catch (e) {
+                // If status check fails, expire old and create new
+                await paymentService.expireSubscription(pendingSub.midtrans_order_id);
+            }
+        }
+
         // 2. Get user info for Midtrans
         const { data: user } = await supabase
             .from('users')
@@ -220,6 +249,30 @@ const webhook = async (req, res) => {
             if (fraud_status && fraud_status !== 'accept') {
                 console.warn(`⚠️ [Webhook] Fraud detected for ${order_id}`);
                 return res.status(200).json({ success: true });
+            }
+
+            // Item #7: Idempotency — skip if already processed
+            if (isSubscription) {
+                const { data: existingSub } = await supabase
+                    .from('subscriptions')
+                    .select('status')
+                    .eq('midtrans_order_id', order_id)
+                    .single();
+                if (existingSub && existingSub.status === 'active') {
+                    console.log(`✅ [Webhook] Order ${order_id} already active. Skipping.`);
+                    return res.status(200).json({ success: true });
+                }
+            }
+            if (isTopup) {
+                const { data: existingOrder } = await supabase
+                    .from('topup_orders')
+                    .select('status')
+                    .eq('midtrans_order_id', order_id)
+                    .single();
+                if (existingOrder && existingOrder.status === 'paid') {
+                    console.log(`✅ [Webhook] Order ${order_id} already paid. Skipping.`);
+                    return res.status(200).json({ success: true });
+                }
             }
 
             if (isSubscription) {

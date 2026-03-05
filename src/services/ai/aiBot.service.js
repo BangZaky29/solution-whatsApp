@@ -52,6 +52,22 @@ class AIBotService {
             return;
         }
 
+        // ── Item #9: SKIP CS-BOT MESSAGES ──
+        // If the sender is CS-BOT's session phone, skip to avoid AI responding to system notifications
+        const csBotSession = sessionManager.getSession('CS-BOT');
+        if (csBotSession && csBotSession.socket) {
+            try {
+                const csBotJid = csBotSession.socket.user?.id;
+                const csBotNumber = csBotJid ? csBotJid.split('@')[0].split(':')[0].replace(/\D/g, '') : null;
+                if (csBotNumber && cleanSender === csBotNumber) {
+                    console.log(`🤖 [AI-Bot][${displayName}] Skipping CS-BOT message from ${cleanSender}. No response, no token deduction.`);
+                    return;
+                }
+            } catch (e) {
+                // Silently continue if CS-BOT check fails
+            }
+        }
+
         const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
         if (!messageText) return;
 
@@ -137,8 +153,8 @@ class AIBotService {
                 const deductResult = await paymentService.deductTokens(userId, 10, 'ai_response', remoteJid);
                 if (deductResult.success) {
                     console.log(`🎫 [AI-Bot][${displayName}] Deducted 10 tokens. Remaining: ${deductResult.balance}`);
-                    // Warn if tokens are getting low (< 100)
-                    if (deductResult.balance > 0 && deductResult.balance <= 100) {
+                    // Item #8: Only warn at milestone 100 exactly
+                    if (deductResult.balance > 0 && deductResult.balance <= 100 && deductResult.balance + 10 > 100) {
                         const { data: user } = await supabase.from('users').select('phone, full_name, username').eq('id', userId).single();
                         if (user?.phone) {
                             await notificationService.notifyTokenLow(user.phone, user.full_name || user.username || 'User', deductResult.balance);
@@ -180,8 +196,15 @@ class AIBotService {
             // Get all chats for this user to find candidates
             const chats = await historyService.getAllChatStats(userId);
             const now = new Date();
+            let nudgeCount = 0;
 
             for (const chat of chats) {
+                // Item #6: Max 3 nudges per cycle
+                if (nudgeCount >= 3) {
+                    console.log(`🛑 [AI-Bot][${displayName}] Nudge limit reached (3). Stopping.`);
+                    break;
+                }
+
                 const lastActive = new Date(chat.last_active);
                 const diffMins = (now - lastActive) / (1000 * 60);
 
@@ -189,6 +212,13 @@ class AIBotService {
                 if (diffMins > 60 && diffMins < 1440) {
                     const history = await historyService.getHistory(chat.jid, userId);
                     if (history.length > 0 && history[history.length - 1].role === 'user') {
+                        // Item #6: Re-check token balance before each nudge
+                        const hasTokensNow = await paymentService.hasEnoughTokens(userId, 5);
+                        if (!hasTokensNow) {
+                            console.log(`🎫 [AI-Bot][${displayName}] Insufficient tokens for nudge. Stopping.`);
+                            break;
+                        }
+
                         console.log(`🤖 [AI-Bot][${displayName}] Sending proactive nudge to ${chat.jid}...`);
 
                         const systemPrompt = await configService.getSystemPrompt(userId) +
@@ -214,6 +244,7 @@ class AIBotService {
 
                         // Deduct 5 tokens for proactive nudge
                         await paymentService.deductTokens(userId, 5, 'proactive_nudge', chat.jid);
+                        nudgeCount++;
 
                         // Save as proactive message
                         await historyService.saveMessage(chat.jid, chat.push_name, {
