@@ -521,41 +521,7 @@ const wipeAccountData = async (req, res) => {
             console.log(`✅ [wipeAccountData] In-memory session removed.`);
         }
 
-        // ── STEP 2: Delete all user data from public tables ──
-        const tablesWithUserId = [
-            historyService.tableName,         // wa_chat_history / wa_chat_history_local
-            'wa_bot_contacts',
-            'wa_bot_prompts',
-            'wa_bot_api_keys',
-            'wa_bot_blocked_attempts',
-            'otp_codes',
-            'user_sessions',
-        ];
-
-        for (const table of tablesWithUserId) {
-            const { error } = await supabase
-                .from(table)
-                .delete()
-                .eq('user_id', userId);
-            if (error) {
-                console.error(`❌ [wipeAccountData] Failed to wipe ${table}: ${error.message}`);
-            } else {
-                console.log(`🗑️  [wipeAccountData] Wiped: ${table}`);
-            }
-        }
-
-        // Delete wa_sessions (uses user_id FK to auth.users)
-        const { error: waSessionErr } = await supabase
-            .from('wa_sessions')
-            .delete()
-            .eq('user_id', userId);
-        if (waSessionErr) {
-            console.error(`❌ [wipeAccountData] Failed to wipe wa_sessions: ${waSessionErr.message}`);
-        } else {
-            console.log(`🗑️  [wipeAccountData] Wiped: wa_sessions`);
-        }
-
-        // Delete wa_bot_settings (uses id LIKE pattern, e.g. 'ai_controls:<userId>')
+        // ── STEP 2: Delete wa_bot_settings (No FK constraint) ──
         const { error: settingsErr } = await supabase
             .from('wa_bot_settings')
             .delete()
@@ -566,18 +532,21 @@ const wipeAccountData = async (req, res) => {
             console.log(`🗑️  [wipeAccountData] Wiped: wa_bot_settings`);
         }
 
-        // Delete from public.users
+        // ── STEP 3: Delete user from public.users (TRIGGERS CASCADE DELETION) ──
+        // This single call will cleanly obliterate: 
+        // payments, subscriptions, tokens, history, contacts, prompts, logs, API keys, etc.
         const { error: usersErr } = await supabase
             .from('users')
             .delete()
             .eq('id', userId);
+
         if (usersErr) {
             console.error(`❌ [wipeAccountData] Failed to delete from public.users: ${usersErr.message}`);
         } else {
-            console.log(`🗑️  [wipeAccountData] Wiped: public.users`);
+            console.log(`✅ [wipeAccountData] CASCADED DELETE initiated successfully from public.users!`);
         }
 
-        // ── STEP 3: Delete auth identity from Supabase Auth ──
+        // ── STEP 4: Delete auth identity from Supabase Auth ──
         console.log(`🔑 [wipeAccountData] Deleting Supabase Auth user...`);
         const { error: authError } = await supabase.auth.admin.deleteUser(userId);
         if (authError) {
