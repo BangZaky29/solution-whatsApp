@@ -222,6 +222,10 @@ const getTopupTiers = async (req, res) => {
 const webhook = async (req, res) => {
     try {
         const notification = req.body;
+
+        // Log full body for debugging production issues
+        console.log(`\n🔔 [Webhook] Full Payload:`, JSON.stringify(notification, null, 2));
+
         const {
             order_id,
             transaction_status,
@@ -235,14 +239,30 @@ const webhook = async (req, res) => {
         console.log(`🔔 Status: ${transaction_status} | Fraud: ${fraud_status}`);
         console.log(`🔔 ============================================\n`);
 
+        // Handle Midtrans Test Pings / Connection Tests
+        // These often lack order_id or use dummy data that fails signature check
+        if (!order_id || (notification.status_message && notification.status_message.toLowerCase().includes('test'))) {
+            console.log(`ℹ️ [Webhook] Acknowledging test notification/ping.`);
+            return res.status(200).json({ success: true, message: 'Test notification received' });
+        }
+
         // Verify signature
         if (!midtransService.verifySignature(notification)) {
             console.error('❌ [Webhook] Invalid signature!');
-            return res.status(403).json({ success: false, error: 'Invalid signature' });
+            // Return 200 even on invalid signature to satisfy Midtrans, 
+            // but don't process the order.
+            return res.status(200).json({ success: false, error: 'Invalid signature' });
         }
 
-        const isSubscription = order_id.startsWith('SUB-');
-        const isTopup = order_id.startsWith('TOP-');
+        const isSubscription = order_id && order_id.startsWith('SUB-');
+        const isTopup = order_id && order_id.startsWith('TOP-');
+
+        // Handle specific GoPay Account Linking or Recurring notifications if they don't have our order_id format
+        if (!isSubscription && !isTopup) {
+            console.log(`ℹ️ [Webhook] Non-standard notification received:`, JSON.stringify(notification));
+            // Just acknowledge to Midtrans
+            return res.status(200).json({ success: true, message: 'Notification received' });
+        }
 
         // Handle based on transaction status
         if (transaction_status === 'capture' || transaction_status === 'settlement') {
@@ -343,9 +363,14 @@ const webhook = async (req, res) => {
             } else if (isTopup) {
                 await paymentService.expireTopup(order_id);
             }
-        } else if (transaction_status === 'expire') {
+        } else if (transaction_status === 'expire' || transaction_status === 'failure') {
             if (isSubscription) await paymentService.expireSubscription(order_id);
             if (isTopup) await paymentService.expireTopup(order_id);
+        } else if (payment_type === 'recurring' || notification.recurring) {
+            console.log(`📝 [Webhook] Recurring payment notification for ${order_id}: ${transaction_status}`);
+            // Core logic for recurring is usually handled by 'settlement' above
+        } else {
+            console.log(`ℹ️ [Webhook] Unhandled status: ${transaction_status} for ${order_id}`);
         }
         // 'pending' — no action needed, subscription already in pending state
 
