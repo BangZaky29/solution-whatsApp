@@ -158,12 +158,12 @@ const sendPaymentConfirmation = async (req, res) => {
  */
 const getLogs = async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.userId; // userAuth middleware attaches it here
         if (!userId) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const supabase = require('../../config/supabase');
+        const supabase = require('../config/supabase');
         const { data, error } = await supabase
             .from('wa_bot_logs')
             .select('*')

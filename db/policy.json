@@ -168,25 +168,5 @@
         "cmd": "ALL",
         "qual": "true",
         "with_check": "true"
-    },
-    {
-        "schemaname": "public",
-        "tablename": "wa_bot_logs",
-        "policyname": "Users can view their own logs",
-        "permissive": "PERMISSIVE",
-        "roles": "{public}",
-        "cmd": "SELECT",
-        "qual": "(user_id = auth.uid())",
-        "with_check": "(user_id = auth.uid())"
-    },
-    {
-        "schemaname": "public",
-        "tablename": "wa_bot_logs",
-        "policyname": "Service Role full access to logs",
-        "permissive": "PERMISSIVE",
-        "roles": "{public}",
-        "cmd": "ALL",
-        "qual": "true",
-        "with_check": "true"
     }
 ]
