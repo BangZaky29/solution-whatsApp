@@ -22,7 +22,7 @@ class GeminiService {
         try {
             const client = new GoogleGenerativeAI(finalApiKey);
             // Pastikan model name valid (gemini-1.5-flash atau gemini-1.5-pro)
-            const modelName = options.modelName || "gemini-1.5-flash";
+            const modelName = options.modelName || "gemini-2.5-flash";
             const model = client.getGenerativeModel({ model: modelName });
 
             const finalSystemPrompt = customPrompt || "Anda adalah asisten AI ramah.";
