@@ -192,12 +192,12 @@
     {
         "schemaname": "storage",
         "tablename": "objects",
-        "policyname": "Public Read Access whatsapp-media",
+        "policyname": "User can only access their own folder in whatsapp-media",
         "permissive": "PERMISSIVE",
         "roles": "{public}",
-        "cmd": "SELECT",
-        "qual": "(bucket_id = 'whatsapp-media'::text)",
-        "with_check": null
+        "cmd": "ALL",
+        "qual": "((bucket_id = 'whatsapp-media'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+        "with_check": "((bucket_id = 'whatsapp-media'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
     },
     {
         "schemaname": "storage",

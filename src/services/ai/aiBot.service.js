@@ -141,11 +141,11 @@ class AIBotService {
         let systemPrompt = await configService.getSystemPrompt(userId);
 
         // --- NEW: INJECT AI CAPABILITIES KNOWLEDGE ---
-        systemPrompt += "\n\nKEMAMPUAN MEDIA: Kamu sekarang bisa melihat/menganalisis foto/gambar yang dikirim user (menggunakan teknologi Vision), menerima video/audio, dan mengirim media balik.";
-        systemPrompt += "\nUntuk mengirim gambar ke user, gunakan format: [SEND_IMAGE: link_gambar]";
-        systemPrompt += "\nUntuk mengirim video: [SEND_VIDEO: link_video]";
-        systemPrompt += "\nUntuk mengirim audio/VN: [SEND_AUDIO: link_audio]";
-        systemPrompt += "\nJika user bertanya apakah kamu bisa melihat/mengirim foto, jawablah 'Bisa'.";
+        systemPrompt += "\n\nKEMAMPUAN MEDIA (VITAL): Kamu sekarang bisa melihat, menganalisis, dan MENGINGAT media di masa lalu.";
+        systemPrompt += "\n- Jika user mengirim foto di chat sebelumnya, kamu akan melihat log [Media image: url] di history.";
+        systemPrompt += "\n- Jika user minta kirim balik foto tersebut, cari URL-nya di history lalu gunakan format: [SEND_IMAGE: url_dari_history].";
+        systemPrompt += "\n- Gunakan format [SEND_IMAGE: url] untuk gambar, [SEND_VIDEO: url] untuk video, dan [SEND_AUDIO: url] untuk audio.";
+        systemPrompt += "\nJangan pernah katakan 'saya tidak punya fotonya' jika URL-nya ada di log history di atas.";
 
         if (isPacarZaky && !userId) { // Special logic only for global bot
             systemPrompt += " Khusus untuk orang ini, dia adalah pacar Zaky. Kamu harus ekstra ramah, sangat baik, dan perhatian.";

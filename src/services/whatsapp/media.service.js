@@ -44,10 +44,14 @@ class MediaService {
                 throw new Error('Failed to download media buffer');
             }
 
+            if (!userId) {
+                throw new Error('Unauthorized: userId is required for media processing');
+            }
+
             // 2. Prepare file info
             const extension = this._getExtension(mediaType, msg.message[messageType]?.mimetype);
             const fileName = `${crypto.randomUUID()}${extension}`;
-            const filePath = `${userId || 'system'}/${mediaType}/${fileName}`;
+            const filePath = `${userId}/${mediaType}/${fileName}`;
 
             // 3. Upload to Supabase Storage
             console.log(`📤 [MediaService] Uploading to Supabase: ${filePath}...`);
