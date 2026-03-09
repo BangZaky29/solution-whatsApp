@@ -7,11 +7,11 @@ const whatsappService = require('../whatsapp/whatsapp.service');
  */
 class NotificationService {
     constructor() {
-        this.csSessionId = 'CS-BOT';
-        console.log('🔔 [NotificationService] Initialized');
+        this.csSessionId = process.env.SESSION_ID || 'main-session';
+        console.log(`🔔 [NotificationService] Initialized with session: ${this.csSessionId}`);
     }
 
-    /**
+    /*
      * Get CS-BOT socket (lazy-loaded to avoid circular dependency)
      */
     _getSocket() {

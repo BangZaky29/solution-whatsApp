@@ -156,7 +156,7 @@ const login = async (req, res) => {
             console.error(`❌ [Login] Failed to send OTP:`, sendResult.error);
             return res.status(503).json({
                 success: false,
-                error: 'Gagal mengirim OTP WhatsApp. Pastikan CS-BOT sudah aktif dan terhubung.'
+                error: 'Gagal mengirim OTP WhatsApp. Pastikan koneksi WhatsApp Server aktif.'
             });
         }
 
@@ -260,7 +260,7 @@ const resendOtp = async (req, res) => {
             console.error(`❌ [ResendOTP] Failed to send OTP:`, sendResult.error);
             return res.status(503).json({
                 success: false,
-                error: 'Gagal mengirim ulang OTP. Pastikan CS-BOT terhubung.'
+                error: 'Gagal mengirim ulang OTP. Pastikan koneksi WhatsApp Server aktif.'
             });
         }
 

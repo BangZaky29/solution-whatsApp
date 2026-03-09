@@ -111,7 +111,7 @@ const sendBulk = async (req, res) => {
  * POST /api/whatsapp/:sessionId/notify/payment-confirmation
  */
 const sendPaymentConfirmation = async (req, res) => {
-    const ADMIN_NUMBER = '6288294096100';
+    const ADMIN_NUMBER = process.env.DEVELOPER_WA_NUMBER || '6288294096100';
     const ADMIN_DASHBOARD_URL = 'https://admin-controller.nuansasolution.id/';
 
     try {

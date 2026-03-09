@@ -54,20 +54,21 @@ class AIBotService {
             return;
         }
 
-        // ── Item #9: SKIP CS-BOT MESSAGES ──
-        // If the sender is CS-BOT's session phone, skip to avoid AI responding to system notifications
-        const csBotSession = sessionManager.getSession('CS-BOT');
-        if (csBotSession && csBotSession.socket) {
-            try {
-                const csBotJid = csBotSession.socket.user?.id;
-                const csBotNumber = csBotJid ? csBotJid.split('@')[0].split(':')[0].replace(/\D/g, '') : null;
-                if (csBotNumber && cleanSender === csBotNumber) {
-                    console.log(`🤖 [AI-Bot][${displayName}] Skipping CS-BOT message from ${cleanSender}. No response, no token deduction.`);
-                    logService.system(userId, sessionId, `Skipping CS-BOT message to prevent self-loop. No token deduction.`);
-                    return;
-                }
-            } catch (e) {
-                // Silently continue if CS-BOT check fails
+        // ── Item #9: SKIP SYSTEM MESSAGES (CS-BOT & MAIN-SESSION) ──
+        // Skip messages from system sessions to avoid AI responding to notifications
+        const systemSessions = ['CS-BOT', process.env.SESSION_ID || 'main-session'];
+        for (const sysId of systemSessions) {
+            const sysSession = sessionManager.getSession(sysId);
+            if (sysSession && sysSession.socket) {
+                try {
+                    const sysJid = sysSession.socket.user?.id;
+                    const sysNumber = sysJid ? sysJid.split('@')[0].split(':')[0].replace(/\D/g, '') : null;
+                    if (sysNumber && cleanSender === sysNumber) {
+                        console.log(`🤖 [AI-Bot][${displayName}] Skipping system message from ${sysId} (${cleanSender}).`);
+                        logService.system(userId, sessionId, `Skipping ${sysId} message to prevent self-loop.`);
+                        return;
+                    }
+                } catch (e) { }
             }
         }
 
