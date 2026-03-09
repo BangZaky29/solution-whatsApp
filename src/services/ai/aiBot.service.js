@@ -72,8 +72,23 @@ class AIBotService {
             }
         }
 
+        const messageType = msg.message ? Object.keys(msg.message)[0] : null;
         const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
-        if (!messageText) return;
+
+        // --- NEW: MEDIA HANDLING ---
+        const isMedia = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage'].includes(messageType);
+        let mediaRecord = null;
+
+        if (isMedia) {
+            const mediaService = require('../whatsapp/media.service');
+            mediaRecord = await mediaService.processIncomingMedia(msg, userId);
+            if (mediaRecord) {
+                console.log(`📸 [AI-Bot][${displayName}] Media detected: ${mediaRecord.public_url}`);
+                logService.info(userId, sessionId, `Received ${mediaRecord.file_type}: ${mediaRecord.public_url}`);
+            }
+        }
+
+        if (!messageText && !isMedia) return;
 
         // NEW: Check for AI enabled and delay
         const controls = await configService.getAIControls(userId);
