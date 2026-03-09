@@ -89,7 +89,11 @@ class MediaService {
             }
 
             console.log(`✅ [MediaService] Media processed: ${publicUrl}`);
-            return mediaRecord;
+            return {
+                ...mediaRecord,
+                buffer,
+                mimetype: msg.message[messageType]?.mimetype
+            };
 
         } catch (error) {
             console.error('❌ [MediaService] Process error:', error.message);

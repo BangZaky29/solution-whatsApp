@@ -146,6 +146,12 @@ class AIBotService {
         const history = await historyService.getHistory(remoteJid, userId);
         const formattedHistory = historyService.formatForPrompt(history);
 
+        // --- NEW: INJECT MEDIA INFO INTO PROMPT ---
+        let promptWithMedia = fullMessageText;
+        if (mediaRecord) {
+            promptWithMedia = `[User sent a ${mediaRecord.file_type}: ${mediaRecord.public_url}] ` + (fullMessageText || "Please analyze this file.");
+        }
+
         await socket.sendPresenceUpdate('composing', remoteJid);
         const startTime = Date.now();
         await configService.incrementStat('requests', userId);
@@ -155,13 +161,29 @@ class AIBotService {
             console.log(`🤖 [AI-Bot][${displayName}] Using API Key model: ${activeKeyConfig.model} (Custom: ${!!activeKeyConfig.key && activeKeyConfig.key !== process.env.GEMINI_API_KEY})`);
             logService.system(userId, sessionId, `Invoking LLM Model: ${activeKeyConfig.model}`);
 
-            const aiResponse = await geminiService.generateResponse(fullMessageText, formattedHistory, systemPrompt, {
+            const aiResponse = await geminiService.generateResponse(promptWithMedia, formattedHistory, systemPrompt, {
                 apiKey: activeKeyConfig.key,
                 modelName: activeKeyConfig.config?.model || activeKeyConfig.model,
-                apiVersion: activeKeyConfig.config?.version || activeKeyConfig.version
+                apiVersion: activeKeyConfig.config?.version || activeKeyConfig.version,
+                media: mediaRecord && mediaRecord.buffer ? {
+                    buffer: mediaRecord.buffer,
+                    mimetype: mediaRecord.mimetype
+                } : null
             });
             const latency = Date.now() - startTime;
             logService.success(userId, sessionId, `AI Response generated in ${latency}ms`);
+
+            // --- NEW: AI MEDIA RESPONSE PARSING ---
+            const imageMatch = aiResponse.match(/\[SEND_IMAGE:\s*(https?:\/\/[^\]]+)\]/);
+            const videoMatch = aiResponse.match(/\[SEND_VIDEO:\s*(https?:\/\/[^\]]+)\]/);
+            const audioMatch = aiResponse.match(/\[SEND_AUDIO:\s*(https?:\/\/[^\]]+)\]/);
+
+            // Clean response for textual part
+            const cleanResponse = aiResponse
+                .replace(/\[SEND_IMAGE:[^\]]+\]/g, '')
+                .replace(/\[SEND_VIDEO:[^\]]+\]/g, '')
+                .replace(/\[SEND_AUDIO:[^\]]+\]/g, '')
+                .trim();
 
             // NEW: Implement response delay
             if (controls.response_delay_mins > 0) {
@@ -170,7 +192,23 @@ class AIBotService {
                 await new Promise(resolve => setTimeout(resolve, delayMs));
             }
 
-            await socket.sendMessage(remoteJid, { text: aiResponse });
+            // Send textual response if not empty
+            if (cleanResponse) {
+                await socket.sendMessage(remoteJid, { text: cleanResponse });
+            }
+
+            // Send actual media if parsed
+            if (imageMatch) {
+                console.log(`📤 [AI-Bot][${displayName}] AI sending IMAGE: ${imageMatch[1]}`);
+                await socket.sendMessage(remoteJid, { image: { url: imageMatch[1] }, caption: "Ini kak fotonya... 😉" });
+            } else if (videoMatch) {
+                console.log(`📤 [AI-Bot][${displayName}] AI sending VIDEO: ${videoMatch[1]}`);
+                await socket.sendMessage(remoteJid, { video: { url: videoMatch[1] } });
+            } else if (audioMatch) {
+                console.log(`📤 [AI-Bot][${displayName}] AI sending AUDIO: ${audioMatch[1]}`);
+                await socket.sendMessage(remoteJid, { audio: { url: audioMatch[1] }, mimetype: 'audio/mp4', ptt: true });
+            }
+
             await configService.incrementStat('responses', userId);
 
             // ── DEDUCT TOKENS ──
