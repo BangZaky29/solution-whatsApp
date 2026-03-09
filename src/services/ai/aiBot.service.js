@@ -139,6 +139,14 @@ class AIBotService {
 
         const isPacarZaky = cleanSender.includes('6288293473765');
         let systemPrompt = await configService.getSystemPrompt(userId);
+
+        // --- NEW: INJECT AI CAPABILITIES KNOWLEDGE ---
+        systemPrompt += "\n\nKEMAMPUAN MEDIA: Kamu sekarang bisa melihat/menganalisis foto/gambar yang dikirim user (menggunakan teknologi Vision), menerima video/audio, dan mengirim media balik.";
+        systemPrompt += "\nUntuk mengirim gambar ke user, gunakan format: [SEND_IMAGE: link_gambar]";
+        systemPrompt += "\nUntuk mengirim video: [SEND_VIDEO: link_video]";
+        systemPrompt += "\nUntuk mengirim audio/VN: [SEND_AUDIO: link_audio]";
+        systemPrompt += "\nJika user bertanya apakah kamu bisa melihat/mengirim foto, jawablah 'Bisa'.";
+
         if (isPacarZaky && !userId) { // Special logic only for global bot
             systemPrompt += " Khusus untuk orang ini, dia adalah pacar Zaky. Kamu harus ekstra ramah, sangat baik, dan perhatian.";
         }

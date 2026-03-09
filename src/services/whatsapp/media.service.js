@@ -1,6 +1,6 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const supabase = require('../../config/supabase');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 
@@ -46,7 +46,7 @@ class MediaService {
 
             // 2. Prepare file info
             const extension = this._getExtension(mediaType, msg.message[messageType]?.mimetype);
-            const fileName = `${uuidv4()}${extension}`;
+            const fileName = `${crypto.randomUUID()}${extension}`;
             const filePath = `${userId || 'system'}/${mediaType}/${fileName}`;
 
             // 3. Upload to Supabase Storage

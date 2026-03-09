@@ -35,8 +35,8 @@ CREATE TABLE public.subscriptions (
   payment_method text,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT subscriptions_pkey PRIMARY KEY (id),
-  CONSTRAINT subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT subscriptions_package_id_fkey FOREIGN KEY (package_id) REFERENCES public.packages(id)
+  CONSTRAINT subscriptions_package_id_fkey FOREIGN KEY (package_id) REFERENCES public.packages(id),
+  CONSTRAINT subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.token_balances (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -187,6 +187,19 @@ CREATE TABLE public.wa_chat_history_local (
   user_id uuid NOT NULL,
   CONSTRAINT wa_chat_history_local_pkey PRIMARY KEY (jid, user_id),
   CONSTRAINT wa_chat_history_local_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.wa_media (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  jid text NOT NULL,
+  message_id text NOT NULL,
+  file_name text NOT NULL,
+  file_type text NOT NULL,
+  bucket_path text NOT NULL,
+  public_url text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT wa_media_pkey PRIMARY KEY (id),
+  CONSTRAINT wa_media_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.wa_sessions (
   id text NOT NULL,

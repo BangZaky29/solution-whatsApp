@@ -168,5 +168,45 @@
         "cmd": "ALL",
         "qual": "true",
         "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_media",
+        "policyname": "Service Role manage all",
+        "permissive": "PERMISSIVE",
+        "roles": "{service_role}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
+    },
+    {
+        "schemaname": "public",
+        "tablename": "wa_media",
+        "policyname": "Users can view their own media",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "SELECT",
+        "qual": "(user_id = auth.uid())",
+        "with_check": null
+    },
+    {
+        "schemaname": "storage",
+        "tablename": "objects",
+        "policyname": "Public Read Access whatsapp-media",
+        "permissive": "PERMISSIVE",
+        "roles": "{public}",
+        "cmd": "SELECT",
+        "qual": "(bucket_id = 'whatsapp-media'::text)",
+        "with_check": null
+    },
+    {
+        "schemaname": "storage",
+        "tablename": "objects",
+        "policyname": "Service Role All Access whatsapp-media",
+        "permissive": "PERMISSIVE",
+        "roles": "{service_role}",
+        "cmd": "ALL",
+        "qual": "true",
+        "with_check": "true"
     }
 ]
