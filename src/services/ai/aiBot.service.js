@@ -189,8 +189,13 @@ class AIBotService {
                 }
             }
 
-            // Save to history
-            await historyService.saveMessage(remoteJid, pushName, { role: 'user', content: fullMessageText }, userId);
+            // Save to history (including media if any)
+            await historyService.saveMessage(remoteJid, pushName, {
+                role: 'user',
+                content: fullMessageText || `[Sent ${mediaRecord?.file_type || 'Media'}]`,
+                mediaUrl: mediaRecord?.public_url,
+                mediaType: mediaRecord?.file_type
+            }, userId);
             await historyService.saveMessage(remoteJid, 'AI Assistant', { role: 'model', content: aiResponse, latency }, userId);
 
         } catch (error) {

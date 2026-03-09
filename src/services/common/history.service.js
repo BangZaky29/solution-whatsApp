@@ -50,6 +50,8 @@ class HistoryService {
             history.push({
                 role: newMessage.role,
                 content: newMessage.content,
+                media_url: newMessage.mediaUrl || null,
+                media_type: newMessage.mediaType || null,
                 is_proactive: newMessage.isProactive || false,
                 latency: newMessage.latency || null,
                 timestamp: new Date().toISOString()
