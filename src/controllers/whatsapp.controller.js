@@ -165,7 +165,9 @@ const getLogs = async (req, res) => {
 
         const paymentService = require('../services/payment/payment.service');
         const features = await paymentService.getUserFeatures(userId);
-        if (!features.log_monitor_enabled) {
+
+        const isDev = process.env.NODE_ENV === 'development';
+        if (!features.log_monitor_enabled && !isDev) {
             return res.status(403).json({ success: false, error: 'Feature not included in package' });
         }
 
