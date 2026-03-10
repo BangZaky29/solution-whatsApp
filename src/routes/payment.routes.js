@@ -23,5 +23,6 @@ router.post('/topup', userAuth, paymentController.topup);
 router.get('/my-subscription', userAuth, paymentController.getMySubscription);
 router.get('/my-tokens', userAuth, paymentController.getMyTokens);
 router.get('/status/:orderId', userAuth, paymentController.getPaymentStatus);
+router.get('/my-features', userAuth, paymentController.getUserFeatures);
 
 module.exports = router;

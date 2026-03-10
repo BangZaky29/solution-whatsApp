@@ -7,7 +7,7 @@ const whatsappService = require('../whatsapp/whatsapp.service');
  */
 class NotificationService {
     constructor() {
-        this.csSessionId = process.env.SESSION_ID || 'main-session';
+        this.csSessionId = 'CS-BOT';
         console.log(`🔔 [NotificationService] Initialized with session: ${this.csSessionId}`);
     }
 
@@ -182,9 +182,10 @@ class NotificationService {
             `Halo ${userName},`,
             `Akun Anda berhasil didaftarkan.`,
             ``,
-            `🎁 Anda mendapat *TRIAL GRATIS 3 HARI*`,
-            `📦 Paket: *Pro (Full Feature)*`,
-            `🎫 Token: *1.500 token*`,
+            `🚀 *NEW USER PROMO:*`,
+            `Dapatkan diskon *80%* untuk semua paket pembelian pertama Anda! ✨`,
+            ``,
+            `Berlangganan sekarang di dashboard untuk mulai menggunakan fitur AI.`,
             ``,
             `Selamat mencoba! 🚀`,
         ].join('\n');

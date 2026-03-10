@@ -163,6 +163,12 @@ const getLogs = async (req, res) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
+        const paymentService = require('../services/payment/payment.service');
+        const features = await paymentService.getUserFeatures(userId);
+        if (!features.log_monitor_enabled) {
+            return res.status(403).json({ success: false, error: 'Feature not included in package' });
+        }
+
         const supabase = require('../config/supabase');
         const { data, error } = await supabase
             .from('wa_bot_logs')

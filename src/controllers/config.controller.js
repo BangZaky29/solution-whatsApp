@@ -521,20 +521,74 @@ const wipeAccountData = async (req, res) => {
             console.log(`✅ [wipeAccountData] In-memory session removed.`);
         }
 
-        // ── STEP 2: Delete wa_bot_settings (No FK constraint) ──
+        // ── STEP 2: Delete files from Storage (whatsapp-media) ──
+        console.log(`📂 [wipeAccountData] Cleaning up storage files...`);
+        try {
+            // List all files in the user's folder
+            const { data: files, error: listError } = await supabase.storage
+                .from('whatsapp-media')
+                .list(userId);
+
+            if (files && files.length > 0) {
+                const pathsToDelete = files.map(file => `${userId}/${file.name}`);
+                const { error: deleteError } = await supabase.storage
+                    .from('whatsapp-media')
+                    .remove(pathsToDelete);
+
+                if (deleteError) {
+                    console.warn(`⚠️ [wipeAccountData] Storage deletion warning: ${deleteError.message}`);
+                } else {
+                    console.log(`✅ [wipeAccountData] Deleted ${files.length} files from storage.`);
+                }
+            }
+        } catch (e) {
+            console.warn(`⚠️ [wipeAccountData] Storage cleanup exception: ${e.message}`);
+        }
+
+        // ── STEP 3: Manual Cascade Deletion (due to missing ON DELETE CASCADE) ──
+        const tablesToDelete = [
+            'wa_chat_history',
+            'wa_chat_history_local',
+            'wa_media',
+            'wa_bot_logs',
+            'wa_bot_contacts',
+            'wa_bot_blocked_attempts',
+            'wa_bot_api_keys',
+            'wa_bot_prompts',
+            'user_sessions',
+            'topup_orders',
+            'token_transactions',
+            'token_balances',
+            'subscriptions',
+            'otp_codes',
+            'wa_sessions' // Primary session record
+        ];
+
+        for (const table of tablesToDelete) {
+            console.log(`🗑️  [wipeAccountData] Wiping table: ${table}...`);
+            const { error: tblErr } = await supabase
+                .from(table)
+                .delete()
+                .eq('user_id', userId);
+
+            if (tblErr) {
+                console.warn(`⚠️ [wipeAccountData] Warning deleting from ${table}: ${tblErr.message}`);
+            }
+        }
+
+        // ── STEP 4: Delete wa_bot_settings (uses pattern in ID) ──
+        console.log(`🗑️  [wipeAccountData] Wiping wa_bot_settings pattern...`);
         const { error: settingsErr } = await supabase
             .from('wa_bot_settings')
             .delete()
             .like('id', `%${userId}%`);
+
         if (settingsErr) {
-            console.error(`❌ [wipeAccountData] Failed to wipe wa_bot_settings: ${settingsErr.message}`);
-        } else {
-            console.log(`🗑️  [wipeAccountData] Wiped: wa_bot_settings`);
+            console.warn(`⚠️ [wipeAccountData] Warning deleting from wa_bot_settings: ${settingsErr.message}`);
         }
 
-        // ── STEP 3: Delete user from public.users (TRIGGERS CASCADE DELETION) ──
-        // This single call will cleanly obliterate: 
-        // payments, subscriptions, tokens, history, contacts, prompts, logs, API keys, etc.
+        // ── STEP 5: Delete user from public.users ──
+        console.log(`👤 [wipeAccountData] Deleting user record from public.users...`);
         const { error: usersErr } = await supabase
             .from('users')
             .delete()
@@ -542,16 +596,15 @@ const wipeAccountData = async (req, res) => {
 
         if (usersErr) {
             console.error(`❌ [wipeAccountData] Failed to delete from public.users: ${usersErr.message}`);
-        } else {
-            console.log(`✅ [wipeAccountData] CASCADED DELETE initiated successfully from public.users!`);
+            throw new Error(`Failed to delete user record: ${usersErr.message}`);
         }
 
-        // ── STEP 4: Delete auth identity from Supabase Auth ──
+        // ── STEP 6: Delete auth identity from Supabase Auth ──
         console.log(`🔑 [wipeAccountData] Deleting Supabase Auth user...`);
         const { error: authError } = await supabase.auth.admin.deleteUser(userId);
         if (authError) {
             console.error(`❌ [wipeAccountData] Failed to delete auth user: ${authError.message}`);
-            // Still return success for data wipe even if auth deletion fails
+            // We proceed as public data is already wiped
         } else {
             console.log(`✅ [wipeAccountData] Supabase Auth user DELETED.`);
         }

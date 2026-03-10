@@ -168,45 +168,5 @@
         "cmd": "ALL",
         "qual": "true",
         "with_check": "true"
-    },
-    {
-        "schemaname": "public",
-        "tablename": "wa_media",
-        "policyname": "Service Role manage all",
-        "permissive": "PERMISSIVE",
-        "roles": "{service_role}",
-        "cmd": "ALL",
-        "qual": "true",
-        "with_check": "true"
-    },
-    {
-        "schemaname": "public",
-        "tablename": "wa_media",
-        "policyname": "Users can view their own media",
-        "permissive": "PERMISSIVE",
-        "roles": "{public}",
-        "cmd": "SELECT",
-        "qual": "(user_id = auth.uid())",
-        "with_check": null
-    },
-    {
-        "schemaname": "storage",
-        "tablename": "objects",
-        "policyname": "User can only access their own folder in whatsapp-media",
-        "permissive": "PERMISSIVE",
-        "roles": "{public}",
-        "cmd": "ALL",
-        "qual": "((bucket_id = 'whatsapp-media'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
-        "with_check": "((bucket_id = 'whatsapp-media'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
-    },
-    {
-        "schemaname": "storage",
-        "tablename": "objects",
-        "policyname": "Service Role All Access whatsapp-media",
-        "permissive": "PERMISSIVE",
-        "roles": "{service_role}",
-        "cmd": "ALL",
-        "qual": "true",
-        "with_check": "true"
     }
 ]

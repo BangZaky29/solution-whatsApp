@@ -7,8 +7,8 @@ const whatsappService = require('../whatsapp/whatsapp.service');
  */
 class CSBotService {
     constructor() {
-        this.sessionId = process.env.SESSION_ID || 'main-session';
-        console.log(`🏢 [CS-Bot] Service redirected to session: ${this.sessionId}`);
+        this.sessionId = 'CS-BOT';
+        console.log(`🏢 [CS-Bot] Service locked to session: ${this.sessionId}`);
     }
 
     async handleIncomingMessage(sessionId, socket, msg) {
