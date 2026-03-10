@@ -18,7 +18,18 @@ class MidtransService {
             ? 'https://api.midtrans.com/v2'
             : 'https://api.sandbox.midtrans.com/v2';
 
-        console.log(`💳 [MidtransService] Initialized (${this.isProduction ? 'PRODUCTION' : 'SANDBOX'})`);
+        // ── Validation: Check if keys match environment ──
+        if (this.serverKey) {
+            const isSandboxKey = this.serverKey.startsWith('SB-');
+            if (this.isProduction && isSandboxKey) {
+                console.error('❌ [MidtransService] CRITICAL: Using SANDBOX key in PRODUCTION mode!');
+            } else if (!this.isProduction && !isSandboxKey) {
+                console.error('❌ [MidtransService] CRITICAL: Using PRODUCTION key in SANDBOX mode!');
+                console.error('ℹ️ [MidtransService] Sandbox keys must start with "SB-".');
+            }
+        }
+
+        console.log(`💳 [MidtransService] Initialized (${this.isProduction ? 'PRODUCTION' : 'LIVE'})`);
     }
 
     /**
