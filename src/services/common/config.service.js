@@ -223,11 +223,11 @@ class ConfigService {
 
         if (error || !data) return false;
 
-        // Smart check: Match if exact JID matches OR if only the ID part matches 
-        // (This handles cases where the same person arrives via @s.whatsapp.net or @lid)
+        const isTargetGroup = jid.endsWith('@g.us');
         return data.some(contact => {
             const dbId = contact.jid.split('@')[0];
-            return contact.jid === jid || dbId === incomingId;
+            const isMatch = contact.jid === jid || (!isTargetGroup && dbId === incomingId);
+            return isMatch;
         });
     }
 

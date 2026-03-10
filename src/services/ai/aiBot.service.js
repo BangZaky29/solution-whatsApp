@@ -33,30 +33,60 @@ class AIBotService {
     }
 
     async handleIncomingMessage(sessionId, socket, msg) {
+        const remoteJid = msg.key.remoteJid;
+        if (!remoteJid || remoteJid === 'status@broadcast') return;
+
         const session = sessionManager.getSession(sessionId);
         const userId = UUID_REGEX.test(sessionId) ? sessionId : (session?.userId || null);
 
         if (!userId && sessionId !== 'wa-bot-ai') return;
-        const remoteJid = msg.key.remoteJid;
-        if (!remoteJid || remoteJid === 'status@broadcast') return;
 
         const isGroup = remoteJid.endsWith('@g.us');
-        const myJid = socket.user?.id?.split(':')[0] + '@s.whatsapp.net';
+        const myJid = (socket.user?.id?.split(':')[0] || '').split('@')[0] + '@s.whatsapp.net';
         const myNumber = myJid.split('@')[0];
         const displayName = session?.displayName || sessionId;
 
+        // ── ROBUST TEXT EXTRACTION ──
+        const getMessageText = (m) => {
+            if (!m) return "";
+            return m.conversation ||
+                m.extendedTextMessage?.text ||
+                m.imageMessage?.caption ||
+                m.videoMessage?.caption ||
+                m.buttonsResponseMessage?.selectedButtonId ||
+                m.listResponseMessage?.singleSelectReply?.selectedRowId ||
+                "";
+        };
+        const messageText = getMessageText(msg.message);
+        const mentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+
+        // ── TOP-LEVEL LOGGING ──
+        if (isGroup) {
+            console.log(`📩 [AI-Bot][${displayName}] Incoming group message: ${remoteJid}`);
+            console.log(`   - Sender: ${msg.key.participant || 'unknown'}`);
+            console.log(`   - MyBaseJid: ${myJid} | Mentions: ${JSON.stringify(mentions)}`);
+            console.log(`   - Raw Text: "${messageText}"`);
+        }
+
         // ── Item #X: GROUP MENTION DETECTION ──
         if (isGroup) {
-            const messageText = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || "").toLowerCase();
-            const mentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
-
+            const lowerText = messageText.toLowerCase();
             // Check if bot is mentioned via official mention, text "@number", or text "@displayName"
             const isMentioned = mentions.includes(myJid) ||
-                messageText.includes(`@${myNumber}`) ||
-                (displayName && messageText.includes(`@${displayName.toLowerCase()}`));
+                mentions.some(m => m.includes(myNumber)) ||
+                lowerText.includes(`@${myNumber}`) ||
+                (displayName && lowerText.includes(`@${displayName.toLowerCase()}`));
 
-            if (!isMentioned) return; // Ignore groups unless mentioned
-            console.log(`📢 [AI-Bot][${displayName}] Mentioned in group: ${remoteJid}`);
+            if (!isMentioned) {
+                // One last greedy check: Does the text contain the word "bot"? 
+                // Useful if the user just says "bot help"
+                if (lowerText.includes('bot')) {
+                    console.log(`   - Greedy check: Found 'bot' in text. Proceeding.`);
+                } else {
+                    return;
+                }
+            }
+            console.log(`📢 [AI-Bot][${displayName}] Mention detected. Proceeding to safety checks.`);
         }
 
         const participantJid = msg.key.participant || remoteJid;
@@ -68,16 +98,23 @@ class AIBotService {
             let logName = msg.pushName || 'Unknown';
             if (isGroup) {
                 try {
-                    const metadata = await socket.groupMetadata(remoteJid);
+                    console.log(`🔍 [AI-Bot][${displayName}] Attempting to resolve group name for ${remoteJid}`);
+                    // Race against 5s timeout to prevent hanging the AI pipeline
+                    const metadata = await Promise.race([
+                        socket.groupMetadata(remoteJid),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout fetching metadata')), 5000))
+                    ]);
                     logName = metadata.subject || logName;
-                    console.log(`📦 [AI-Bot][${displayName}] Resolved group name for blocking: ${logName}`);
+                    console.log(`📦 [AI-Bot][${displayName}] Resolved group name: ${logName}`);
                 } catch (e) {
-                    console.warn(`⚠️ [AI-Bot] Could not fetch group metadata:`, e.message);
+                    console.warn(`⚠️ [AI-Bot][${displayName}] Metadata fetch failed: ${e.message}`);
+                    // Fallback to pushName which is already set
                 }
             }
+
             await configService.logBlockedAttempt(remoteJid, logName, userId);
-            console.log(`🚫 [AI-Bot][${displayName}] Target ${isGroup ? 'Group' : 'Sender'} ${logName} NOT whitelisted (JID: ${remoteJid}). Logged for discovery.`);
-            logService.warn(userId, sessionId, `Target ${isGroup ? 'Group' : 'Sender'} ${logName} NOT whitelisted. Logged to blocked attempts.`);
+            console.log(`🚫 [AI-Bot][${displayName}] Target ${isGroup ? 'Group' : 'Sender'} "${logName}" NOT whitelisted. Logged to blocklist.`);
+            logService.warn(userId, sessionId, `Target ${isGroup ? 'Group' : 'Sender'} "${logName}" NOT whitelisted.`);
             return;
         }
 
@@ -100,7 +137,7 @@ class AIBotService {
         }
 
         const messageType = msg.message ? Object.keys(msg.message)[0] : null;
-        const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+        // messageText is already defined above
 
         // --- NEW: MEDIA HANDLING ---
         const isMedia = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage'].includes(messageType);
