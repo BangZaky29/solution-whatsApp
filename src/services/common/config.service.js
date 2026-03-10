@@ -319,7 +319,7 @@ class ConfigService {
         try {
             if (!userId || userId === 'null' || userId === 'undefined') return 'System';
 
-            const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
             if (!UUID_REGEX.test(userId)) {
                 return userId; // Return as is for non-UUIDs (system IDs)
             }
@@ -355,8 +355,11 @@ class ConfigService {
      * @returns {Promise<Array>}
      */
     async getEnrichedAIInstances() {
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
         try {
-            const query = supabase
+            // Attempt 1: Auto-join via Supabase
+            const { data, error } = await supabase
                 .from(this.userSessionsTable)
                 .select(`
                     user_id,
@@ -372,43 +375,42 @@ class ConfigService {
                     )
                 `);
 
-            const { data, error } = await query;
+            if (!error && data) return data;
 
-            // Handle "Relationship not found" or schema cache errors
-            if (error) {
-                console.warn(`⚠️ [ConfigService] Join failed (missing relationship?), falling back to manual join:`, error.message);
+            // Attempt 2: Manual fallback (if join fails or relationship is missing)
+            console.warn(`⚠️ [ConfigService] Falling back to manual join for enriched instances...`);
 
-                // Fallback: Manual join
-                const { data: rawSessions, error: sErr } = await supabase
-                    .from(this.userSessionsTable)
-                    .select('*');
+            const { data: rawSessions, error: sErr } = await supabase
+                .from(this.userSessionsTable)
+                .select('*');
 
-                if (sErr || !rawSessions) throw sErr || new Error('Failed to fetch sessions');
+            if (sErr || !rawSessions) throw sErr || new Error('Failed to fetch sessions');
 
-                const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                const userIds = rawSessions
-                    .map(s => s.user_id)
-                    .filter(id => UUID_REGEX.test(id));
+            const userIds = rawSessions
+                .map(s => s.user_id)
+                .filter(id => UUID_REGEX.test(id));
 
-                if (userIds.length === 0) {
-                    return rawSessions.map(s => ({ ...s, users: null }));
-                }
-
-                const { data: users, error: uErr } = await supabase
-                    .from('users')
-                    .select('id, full_name, email, phone, role, username')
-                    .in('id', userIds);
-
-                return rawSessions.map(s => ({
-                    ...s,
-                    users: users?.find(u => u.id === s.user_id) || null
-                }));
+            if (userIds.length === 0) {
+                return rawSessions.map(s => ({ ...s, users: null }));
             }
 
-            return data || [];
+            const { data: users } = await supabase
+                .from('users')
+                .select('id, full_name, email, phone, role, username')
+                .in('id', userIds);
+
+            return rawSessions.map(s => ({
+                ...s,
+                users: users?.find(u => u.id === s.user_id) || null
+            }));
+
         } catch (err) {
-            console.error(`❌ [ConfigService] getEnrichedAIInstances error:`, err.message);
-            return [];
+            console.error(`❌ [ConfigService] getEnrichedAIInstances ultimate failure:`, err.message);
+            // Last resort: Return raw sessions without user data
+            try {
+                const { data } = await supabase.from(this.userSessionsTable).select('*');
+                return data?.map(s => ({ ...s, users: null })) || [];
+            } catch (e) { return []; }
         }
     }
 }

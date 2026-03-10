@@ -14,25 +14,31 @@ const path = require('path');
 const { logger } = require('../../config/logger');
 const configService = require('../common/config.service');
 
+const connectionLock = new Map();
+
 // UUID detection regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 class ConnectionService {
     async connect(sessionId = 'main-session', userId = null, phoneNumber = null) {
+        // Guard: Prevent multiple simultaneous connection attempts for the same sessionId
+        if (connectionLock.get(sessionId)) {
+            console.log(`ℹ️ [${sessionId}] Connection attempt already in progress. skipping.`);
+            return;
+        }
+
         try {
-            // Prevent multiple simultaneous connection attempts for the same sessionId
+            connectionLock.set(sessionId, true);
             const existingSession = sessionManager.getSession(sessionId);
 
             if (existingSession) {
                 if (existingSession.connectionState.connection === 'open') {
                     console.log(`ℹ️ [${sessionId}] Already connected. skipping.`);
+                    connectionLock.delete(sessionId);
                     return;
                 }
-                if (existingSession.connectionState.connection === 'connecting') {
-                    console.log(`ℹ️ [${sessionId}] Connection already in progress. skipping.`);
-                    return;
-                }
-                // If there's an old socket that isn't connected, clean it up
+
+                // If there's an old socket, clean it up aggressively
                 if (existingSession.socket) {
                     console.log(`🧹 [${sessionId}] Cleaning up old socket before reconnecting...`);
                     try {
@@ -83,6 +89,9 @@ class ConnectionService {
                     return undefined;
                 }
             });
+
+            // Mark as lock released since socket is created (listeners handles the rest)
+            connectionLock.delete(sessionId);
 
             sessionData.socket = socket;
 
@@ -141,8 +150,18 @@ class ConnectionService {
                         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
                         if (shouldReconnect) {
-                            console.log(`🔄 [${sessionData.displayName}] Reconnecting in 10s...`);
-                            setTimeout(() => this.connect(sessionId), 10000);
+                            const isReplaced = statusCode === 440 || statusCode === DisconnectReason.connectionReplaced;
+                            const delay = isReplaced ? 25000 : 10000; // 25s for replaced, 10s otherwise
+
+                            if (isReplaced) {
+                                console.log(`⚠️ [${sessionData.displayName}] Session was replaced elsewhere. Waiting ${delay / 1000}s to avoid conflict.`);
+                            }
+
+                            // Cautious: Mark as connecting NOW so auto-healing in app.js skips it during delay
+                            sessionData.connectionState.connection = 'connecting';
+
+                            console.log(`🔄 [${sessionData.displayName}] Reconnecting in ${delay / 1000}s...`);
+                            setTimeout(() => this.connect(sessionId), delay);
                         } else {
                             console.log(`👋 [${sessionData.displayName}] Logged out. Session data will be cleared.`);
 
@@ -186,9 +205,10 @@ class ConnectionService {
             });
 
         } catch (error) {
+            connectionLock.delete(sessionId);
             console.error(`❌ [${sessionId}] Critical Connection Error:`, error.message);
             // Retry connection after a delay
-            setTimeout(() => this.connect(sessionId), 10000);
+            setTimeout(() => this.connect(sessionId), 15000);
         }
     }
 }

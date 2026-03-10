@@ -97,8 +97,9 @@ app.use(errorHandler);
 setInterval(async () => {
     // 1. Check existing sessions in manager
     sessionManager.forEach((session, sessionId) => {
-        if (session.connectionState.connection === 'close' ||
-            session.connectionState.connection === 'disconnected') {
+        const status = session.connectionState.connection;
+        if (status === 'close' || status === 'disconnected') {
+            // Cautious: only attempt if not already trying
             console.log(`🩹 [Auto-Healing] Attempting to revive dead session: ${sessionId}`);
             connectionService.connect(sessionId).catch(e =>
                 console.error(`❌ [Auto-Healing] Failed to revive ${sessionId}:`, e.message)
@@ -289,5 +290,15 @@ const shutdown = (signal) => {
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+// Prevent process from crashing on non-critical errors (Always-On)
+process.on('uncaughtException', (err) => {
+    console.error('🔥 [Critical] Uncaught Exception:', err.message);
+    if (err.stack) console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('🔥 [Critical] Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 startServer();

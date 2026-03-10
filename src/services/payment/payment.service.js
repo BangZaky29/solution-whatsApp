@@ -336,19 +336,23 @@ class PaymentService {
         const sub = await this.getActiveSubscription(userId);
         if (!sub || !sub.packages) {
             // No active subscription — return minimal/free features
+            // DEV ALLOWANCE: Allow 1 API Key in development mode for easy testing
+            const isDev = process.env.NODE_ENV === 'development';
+
             return {
                 has_subscription: false,
-                max_prompts: 0,
-                max_contacts: 0,
-                max_api_keys: 0,
+                max_prompts: isDev ? 5 : 0,
+                max_contacts: isDev ? 10 : 0,
+                max_api_keys: isDev ? 1 : 0,
                 proactive_enabled: false,
                 max_delay_mins: 0,
                 history_retention_days: 0,
                 blocked_log_enabled: false,
                 log_monitor_enabled: false,
-                dashboard_level: 'none',
+                dashboard_level: isDev ? 'basic' : 'none',
                 package_name: null,
                 expires_at: null,
+                ai_features: isDev ? ['basic_chat'] : []
             };
         }
 
