@@ -3,6 +3,8 @@ const configService = require('../services/common/config.service');
 const supabase = require('../config/supabase');
 const aiBotService = require('../services/ai/aiBot.service');
 const paymentService = require('../services/payment/payment.service');
+const csBotService = require('../services/ai/csBot.service');
+const crypto = require('crypto');
 
 const getStats = async (req, res) => {
     try {
@@ -484,12 +486,79 @@ const deleteHistory = async (req, res) => {
     }
 };
 
+const requestWipeOtp = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('phone, full_name, username')
+            .eq('id', userId)
+            .single();
+
+        if (userError || !user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        // Generate New OTP
+        const otpCodes = crypto.randomInt(100000, 999999).toString();
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+        const { error: otpError } = await supabase
+            .from(configService.otpCodesTable)
+            .insert({ user_id: userId, code: otpCodes, expires_at: expiresAt });
+
+        if (otpError) throw otpError;
+
+        // Send OTP via CS-BOT
+        const message = `🚨 *KONFIRMASI PENGHAPUSAN AKUN*\n\nHalo ${user.full_name || user.username},\nAnda telah meminta penghapusan SELURUH data akun Anda.\n\nKode verifikasi Anda adalah: *${otpCodes}*\n\n*PENTING:* Masukkan kode ini untuk mengonfirmasi penghapusan permanen. Jika Anda tidak merasa melakukan ini, segera amankan akun Anda.`;
+
+        const sendResult = await csBotService.sendOTP(user.phone, message);
+
+        if (!sendResult.success) {
+            console.error(`❌ [requestWipeOtp] Failed to send OTP:`, sendResult.error);
+            return res.status(503).json({
+                success: false,
+                error: 'Gagal mengirim OTP WhatsApp. Pastikan CS-BOT aktif.'
+            });
+        }
+
+        res.json({ success: true, message: 'OTP sent to your WhatsApp.' });
+    } catch (error) {
+        console.error(`❌ [requestWipeOtp] Catch:`, error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
 const wipeAccountData = async (req, res) => {
     const sessionManager = require('../services/whatsapp/session.manager');
 
     try {
         const userId = req.userId;
+        const { otpCode } = req.body;
+
+        if (!otpCode) {
+            return res.status(400).json({ success: false, error: 'OTP code is required' });
+        }
+
+        // 1. Verify OTP
+        const { data: otp, error: otpErr } = await supabase
+            .from(configService.otpCodesTable)
+            .select('*')
+            .eq('user_id', userId)
+            .eq('code', otpCode)
+            .eq('is_used', false)
+            .gt('expires_at', new Date().toISOString())
+            .single();
+
+        if (otpErr || !otp) {
+            return res.status(400).json({ success: false, error: 'Invalid or expired OTP' });
+        }
+
+        // Mark OTP as used
+        await supabase.from(configService.otpCodesTable).update({ is_used: true }).eq('id', otp.id);
+
         const displayName = await configService.getUserDisplay(userId);
+        const { data: user } = await supabase.from('users').select('phone').eq('id', userId).single();
 
         console.log(`\n🔴 ============================================`);
         console.log(`🔴 [wipeAccountData] FULL ACCOUNT DELETION`);
@@ -546,7 +615,6 @@ const wipeAccountData = async (req, res) => {
         }
 
         // ── STEP 3: Dynamic Table Deletion based on Environment ──
-        const configService = require('../services/common/config.service');
         const tablesToDelete = [
             configService.getTableName('wa_chat_history'),
             configService.getTableName('wa_media'),
@@ -614,6 +682,12 @@ const wipeAccountData = async (req, res) => {
             // We proceed as public data is already wiped
         } else {
             console.log(`✅ [wipeAccountData] Supabase Auth user DELETED.`);
+        }
+
+        // ── STEP 7: Final Notification (If possible) ──
+        if (user && user.phone) {
+            const finalMsg = `✅ *PENGHAPUSAN AKUN SELESAI*\n\nHalo,\nSeluruh data akun Anda telah dihapus secara permanen dari sistem kami sesuai permintaan.\n\nTerima kasih telah menggunakan layanan kami.`;
+            await csBotService.sendOTP(user.phone, finalMsg);
         }
 
         console.log(`\n🔴 [wipeAccountData] COMPLETE - Account ${displayName} fully removed.\n`);

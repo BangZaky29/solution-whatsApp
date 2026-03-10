@@ -43,6 +43,7 @@ router.post('/config/blocked/delete', userAuth, configController.deleteBlockedAt
 
 router.get('/history/:jid', userAuth, configController.getHistory);
 router.post('/history/delete', userAuth, configController.deleteHistory);
+router.post('/account/wipe/otp', userAuth, configController.requestWipeOtp);
 router.post('/account/wipe', userAuth, configController.wipeAccountData);
 router.get('/config/prompt', userAuth, configController.getSystemPrompt);
 router.post('/config/prompt', userAuth, configController.updateSystemPrompt);
