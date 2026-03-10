@@ -187,7 +187,7 @@ class AIBotService {
                 const mediaService = require('../whatsapp/media.service');
                 mediaRecord = await mediaService.processIncomingMedia(msg, userId);
                 if (mediaRecord) {
-                    await whatsappService.sendMessage(socket, remoteJid, {
+                    await socket.sendMessage(remoteJid, {
                         text: `✅ *Media Berhasil Disimpan*\n\n` +
                             `📝 *Nama:* ${mediaRecord.file_name}\n` +
                             `📁 *Tipe:* ${mediaRecord.file_type}\n` +
@@ -198,7 +198,7 @@ class AIBotService {
             } else {
                 console.log(`📸 [AI-Bot][${displayName}] Media detected WITHOUT intent. Caching for confirmation.`);
                 this.pendingMedia.set(remoteJid, msg);
-                await whatsappService.sendMessage(socket, remoteJid, {
+                await socket.sendMessage(remoteJid, {
                     text: `📸 *Media Terdeteksi*\n\nbro lu ngirim ${messageType.replace('Message', '')} mau disimpan gak?`
                 }, { quoted: msg });
                 return; // Wait for confirmation
@@ -210,7 +210,7 @@ class AIBotService {
             mediaRecord = await mediaService.processIncomingMedia(cachedMsg, userId);
 
             if (mediaRecord) {
-                await whatsappService.sendMessage(socket, remoteJid, {
+                await socket.sendMessage(remoteJid, {
                     text: `✅ *Media Berhasil Disimpan*\n\n` +
                         `📝 *Nama:* ${mediaRecord.file_name}\n` +
                         `📁 *Tipe:* ${mediaRecord.file_type}\n` +
@@ -223,7 +223,7 @@ class AIBotService {
         } else if (isRejecting) {
             console.log(`🛑 [AI-Bot][${displayName}] User rejected media storage. Clearing cache.`);
             this.pendingMedia.delete(remoteJid);
-            await whatsappService.sendMessage(socket, remoteJid, { text: "Oke bro, media gak bakal gue simpan. 👌" }, { quoted: msg });
+            await socket.sendMessage(remoteJid, { text: "Oke bro, media gak bakal gue simpan. 👌" }, { quoted: msg });
             return;
         }
 
