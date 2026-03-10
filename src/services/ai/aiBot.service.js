@@ -74,8 +74,19 @@ class AIBotService {
             console.log(`   - Raw Text: "${messageText}"`);
         }
 
-        // ── Item #X: GROUP MENTION DETECTION ──
+        // ── Item #X: GROUP MENTION, REPLY & KEYWORD DETECTION ──
         if (isGroup) {
+            const contextInfo = msg.message?.extendedTextMessage?.contextInfo || {};
+            const quotedParticipant = contextInfo.participant || "";
+
+            // Check if message is a reply to the bot itself
+            const isReplyToMe = quotedParticipant === myJid || (myLid && quotedParticipant === myJid);
+
+            const lowerText = messageText.toLowerCase();
+
+            // Check for keywords at the start: "ai " or "bot "
+            const startsWithKeyword = lowerText.startsWith('ai ') || lowerText.startsWith('bot ');
+
             // Check if bot is mentioned via official mention (JID/LID), text "@number", or text "@displayName"
             const isMentioned = mentions.includes(myJid) ||
                 (myLid && mentions.includes(myLid)) ||
@@ -85,7 +96,7 @@ class AIBotService {
                 (myLidBase && lowerText.includes(`@${myLidBase}`)) ||
                 (displayName && lowerText.includes(`@${displayName.toLowerCase()}`));
 
-            if (!isMentioned) {
+            if (!isMentioned && !isReplyToMe && !startsWithKeyword) {
                 // One last greedy check: Does the text contain the word "bot"? 
                 if (lowerText.includes('bot')) {
                     console.log(`   - Greedy check: Found 'bot' in text. Proceeding.`);
@@ -93,7 +104,13 @@ class AIBotService {
                     return;
                 }
             }
-            console.log(`📢 [AI-Bot][${displayName}] Mention detected. Proceeding to safety checks.`);
+
+            let triggerType = 'UNKNOWN';
+            if (isMentioned) triggerType = 'MENTION';
+            else if (isReplyToMe) triggerType = 'REPLY';
+            else if (startsWithKeyword) triggerType = 'KEYWORD';
+
+            console.log(`📢 [AI-Bot][${displayName}] Triggered via ${triggerType}. Proceeding.`);
         }
 
         const participantJid = msg.key.participant || remoteJid;
