@@ -47,7 +47,7 @@ class AIBotService {
         const myJid = (socket.user?.id?.split(':')[0] || '').split('@')[0] + '@s.whatsapp.net';
         const myNumber = myJid.split('@')[0];
         const myLid = socket.user?.lid || socket.authState?.creds?.me?.lid || '';
-        const myLidNumber = myLid ? myLid.split('@')[0] : '';
+        const myLidBase = myLid ? myLid.split(':')[0].split('@')[0] : '';
         const displayName = session?.displayName || sessionId;
 
         // ── ROBUST TEXT EXTRACTION ──
@@ -80,9 +80,9 @@ class AIBotService {
             const isMentioned = mentions.includes(myJid) ||
                 (myLid && mentions.includes(myLid)) ||
                 mentions.some(m => m.includes(myNumber)) ||
-                (myLidNumber && mentions.some(m => m.includes(myLidNumber))) ||
+                (myLidBase && mentions.some(m => m.includes(myLidBase))) ||
                 lowerText.includes(`@${myNumber}`) ||
-                (myLidNumber && lowerText.includes(`@${myLidNumber}`)) ||
+                (myLidBase && lowerText.includes(`@${myLidBase}`)) ||
                 (displayName && lowerText.includes(`@${displayName.toLowerCase()}`));
 
             if (!isMentioned) {
