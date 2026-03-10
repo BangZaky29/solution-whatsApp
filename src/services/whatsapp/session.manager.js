@@ -16,6 +16,22 @@ class SessionManager {
     }
 
     /**
+     * Get session by phone number
+     * @param {string} phoneNumber 
+     * @returns {object|null}
+     */
+    getSessionByPhone(phoneNumber) {
+        if (!phoneNumber) return null;
+        for (const [id, session] of this.sessions.entries()) {
+            if (session.connectionState?.phoneNumber === phoneNumber &&
+                session.connectionState?.connection === 'open') {
+                return { id, ...session };
+            }
+        }
+        return null;
+    }
+
+    /**
      * Set session data
      * @param {string} sessionId 
      * @param {object} data 

@@ -90,38 +90,8 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // ============================================
-// Proactive & Auto-Healing Mechanisms
+// Proactive Logic
 // ============================================
-
-// Auto-healing: Restart dead or missing sessions every 2 mins
-setInterval(async () => {
-    // 1. Check existing sessions in manager
-    sessionManager.forEach((session, sessionId) => {
-        const status = session.connectionState.connection;
-        if (status === 'close' || status === 'disconnected') {
-            // Cautious: only attempt if not already trying
-            console.log(`🩹 [Auto-Healing] Attempting to revive dead session: ${sessionId}`);
-            connectionService.connect(sessionId).catch(e =>
-                console.error(`❌ [Auto-Healing] Failed to revive ${sessionId}:`, e.message)
-            );
-        }
-    });
-
-    // 2. Check for sessions that SHOULD be active (from DB) but aren't in manager
-    try {
-        const activeSessions = await configService.getAllUserSessions();
-        for (const sessionId of activeSessions) {
-            if (!sessionManager.getSession(sessionId)) {
-                console.log(`🩹 [Auto-Healing] Restoring missing session from DB: ${sessionId}`);
-                connectionService.connect(sessionId).catch(e =>
-                    console.error(`❌ [Auto-Healing] Failed to restore ${sessionId}:`, e.message)
-                );
-            }
-        }
-    } catch (err) {
-        console.error(`❌ [Auto-Healing] Sync error:`, err.message);
-    }
-}, 2 * 60 * 1000);
 
 // Send presence update periodically
 setInterval(() => {

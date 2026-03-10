@@ -50,6 +50,18 @@ class ConnectionService {
             }
 
             const displayName = await configService.getUserDisplay(userId || sessionId);
+
+            // CONFLICT PREVENTION: Check if phone number is already active in another session
+            if (phoneNumber) {
+                const cleanRequestPhone = phoneNumber.replace(/\D/g, '');
+                const conflict = sessionManager.getSessionByPhone(cleanRequestPhone);
+                if (conflict && conflict.id !== sessionId) {
+                    console.log(`⚠️  [${displayName}] Conflict Detected: Phone ${cleanRequestPhone} is already active on session [${conflict.displayName}] (${conflict.id}). Skipping connection to prevent flapping.`);
+                    connectionLock.delete(sessionId);
+                    return;
+                }
+            }
+
             console.log(`\n🚀 [${displayName}] Connecting to WhatsApp...`);
 
             // Initialize or reset session data
@@ -151,15 +163,24 @@ class ConnectionService {
 
                         if (shouldReconnect) {
                             const isReplaced = statusCode === 440 || statusCode === DisconnectReason.connectionReplaced;
-                            const delay = isReplaced ? 25000 : 10000; // 25s for replaced, 10s otherwise
+                            const currentPhone = sessionData.connectionState.phoneNumber;
 
-                            if (isReplaced) {
-                                console.log(`⚠️ [${sessionData.displayName}] Session was replaced elsewhere. Waiting ${delay / 1000}s to avoid conflict.`);
+                            // If replaced, check if ANOTHER session in THIS server now owns the phone
+                            if (isReplaced && currentPhone) {
+                                const conflict = sessionManager.getSessionByPhone(currentPhone);
+                                if (conflict && conflict.id !== sessionId) {
+                                    console.log(`⏹️  [${sessionData.displayName}] Session was replaced by [${conflict.displayName}] (${conflict.id}). Stopping reconnection to avoid flapping.`);
+                                    return; // STOP reconnect loop
+                                }
                             }
 
-                            // Cautious: Mark as connecting NOW so auto-healing in app.js skips it during delay
-                            sessionData.connectionState.connection = 'connecting';
+                            const delay = isReplaced ? 25000 : 10000;
 
+                            if (isReplaced) {
+                                console.log(`⚠️  [${sessionData.displayName}] Session was replaced elsewhere. Waiting ${delay / 1000}s to avoid conflict.`);
+                            }
+
+                            sessionData.connectionState.connection = 'connecting';
                             console.log(`🔄 [${sessionData.displayName}] Reconnecting in ${delay / 1000}s...`);
                             setTimeout(() => this.connect(sessionId), delay);
                         } else {
