@@ -90,8 +90,11 @@ class AIBotService {
 
             const lowerText = messageText.toLowerCase();
 
-            // Check for keywords at the start: "ai " or "bot "
-            const startsWithKeyword = lowerText.startsWith('ai ') || lowerText.startsWith('bot ');
+            // Check for keywords anywhere (ai, bot, or display name)
+            const triggerWords = ['ai', 'bot'];
+            if (displayName) triggerWords.push(displayName.toLowerCase());
+            const keywordRegex = new RegExp(`\\b(${triggerWords.join('|')})\\b`, 'i');
+            const hasKeyword = keywordRegex.test(lowerText);
 
             // Check if bot is mentioned via official mention (JID/LID), text "@number", or text "@displayName"
             const isMentioned = mentions.includes(myJid) ||
@@ -102,19 +105,14 @@ class AIBotService {
                 (myLidBase && lowerText.includes(`@${myLidBase}`)) ||
                 (displayName && lowerText.includes(`@${displayName.toLowerCase()}`));
 
-            if (!isMentioned && !isReplyToMe && !startsWithKeyword) {
-                // One last greedy check: Does the text contain the word "bot"? 
-                if (lowerText.includes('bot')) {
-                    console.log(`   - Greedy check: Found 'bot' in text. Proceeding.`);
-                } else {
-                    return;
-                }
+            if (!isMentioned && !isReplyToMe && !hasKeyword) {
+                return;
             }
 
             let triggerType = 'UNKNOWN';
             if (isMentioned) triggerType = 'MENTION';
             else if (isReplyToMe) triggerType = 'REPLY';
-            else if (startsWithKeyword) triggerType = 'KEYWORD';
+            else if (hasKeyword) triggerType = 'KEYWORD';
 
             console.log(`📢 [AI-Bot][${displayName}] Triggered via ${triggerType} (Quoted: ${quotedParticipant || 'none'}). Proceeding.`);
         }
