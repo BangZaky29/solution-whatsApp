@@ -183,7 +183,6 @@ const getLogs = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Feature not included in package' });
         }
 
-        const supabase = require('../config/supabase');
         const { data, error } = await supabase
             .from('wa_bot_logs')
             .select('*')
