@@ -37,6 +37,7 @@ app.use(cors({
         'https://admin-controller.nuansasolution.id',
         'https://nuansasolution.id',
         'https://new-wa-bot-ai.bangzaky0029.workers.dev',
+        'https://neural-wateway.bangzaky0029.workers.dev',
         'http://localhost:5173',
         'http://localhost:5174',
         'http://localhost:3000'
