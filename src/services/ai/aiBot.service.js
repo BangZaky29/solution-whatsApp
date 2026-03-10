@@ -43,30 +43,41 @@ class AIBotService {
         const isGroup = remoteJid.endsWith('@g.us');
         const myJid = socket.user?.id?.split(':')[0] + '@s.whatsapp.net';
         const myNumber = myJid.split('@')[0];
+        const displayName = session?.displayName || sessionId;
 
         // ── Item #X: GROUP MENTION DETECTION ──
         if (isGroup) {
-            const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+            const messageText = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || "").toLowerCase();
             const mentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
-            // Check if bot is mentioned via official mention or text "@number"
-            const isMentioned = mentions.includes(myJid) || messageText.includes(`@${myNumber}`);
+            // Check if bot is mentioned via official mention, text "@number", or text "@displayName"
+            const isMentioned = mentions.includes(myJid) ||
+                messageText.includes(`@${myNumber}`) ||
+                (displayName && messageText.includes(`@${displayName.toLowerCase()}`));
 
             if (!isMentioned) return; // Ignore groups unless mentioned
             console.log(`📢 [AI-Bot][${displayName}] Mentioned in group: ${remoteJid}`);
         }
 
-        const senderId = remoteJid.split('@')[0].split(':')[0];
+        const participantJid = msg.key.participant || remoteJid;
+        const senderId = participantJid.split('@')[0].split(':')[0];
         const cleanSender = senderId.replace(/\D/g, '');
-
-        const displayName = session?.displayName || sessionId;
 
         const isAllowed = await configService.isContactAllowed(remoteJid, userId);
         if (!isAllowed) {
-            const pushName = msg.pushName || 'Unknown';
-            await configService.logBlockedAttempt(remoteJid, pushName, userId);
-            console.log(`🚫 [AI-Bot][${displayName}] Sender ${cleanSender} NOT whitelisted (Full JID: ${remoteJid}). Logged for discovery.`);
-            logService.warn(userId, sessionId, `Sender ${cleanSender} NOT whitelisted. Logged to blocked attempts.`);
+            let logName = msg.pushName || 'Unknown';
+            if (isGroup) {
+                try {
+                    const metadata = await socket.groupMetadata(remoteJid);
+                    logName = metadata.subject || logName;
+                    console.log(`📦 [AI-Bot][${displayName}] Resolved group name for blocking: ${logName}`);
+                } catch (e) {
+                    console.warn(`⚠️ [AI-Bot] Could not fetch group metadata:`, e.message);
+                }
+            }
+            await configService.logBlockedAttempt(remoteJid, logName, userId);
+            console.log(`🚫 [AI-Bot][${displayName}] Target ${isGroup ? 'Group' : 'Sender'} ${logName} NOT whitelisted (JID: ${remoteJid}). Logged for discovery.`);
+            logService.warn(userId, sessionId, `Target ${isGroup ? 'Group' : 'Sender'} ${logName} NOT whitelisted. Logged to blocked attempts.`);
             return;
         }
 
@@ -142,7 +153,13 @@ class AIBotService {
             }
         }
 
-        const pushName = msg.pushName || 'User';
+        let pushName = msg.pushName || 'User';
+        if (isGroup) {
+            try {
+                const metadata = await socket.groupMetadata(remoteJid);
+                pushName = metadata.subject || pushName;
+            } catch (e) { }
+        }
         const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
         let fullMessageText = messageText;
         if (quotedMsg) {
