@@ -167,7 +167,19 @@ const getLogs = async (req, res) => {
         const features = await paymentService.getUserFeatures(userId);
 
         const isDev = process.env.NODE_ENV === 'development';
-        if (!features.log_monitor_enabled && !isDev) {
+
+        // ── Bypass Check: Admins & Developer Numbers ──
+        const supabase = require('../config/supabase');
+        const { data: user } = await supabase
+            .from('users')
+            .select('role, phone')
+            .eq('id', userId)
+            .single();
+
+        const isAdmin = user?.role === 'admin';
+        const isDeveloper = user?.phone === process.env.DEVELOPER_WA_NUMBER;
+
+        if (!features.log_monitor_enabled && !isDev && !isAdmin && !isDeveloper) {
             return res.status(403).json({ success: false, error: 'Feature not included in package' });
         }
 
