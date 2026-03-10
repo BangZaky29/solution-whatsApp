@@ -33,6 +33,8 @@ class AIBotService {
     }
 
     async handleIncomingMessage(sessionId, socket, msg) {
+        if (msg.key.fromMe) return;
+
         const remoteJid = msg.key.remoteJid;
         if (!remoteJid || remoteJid === 'status@broadcast') return;
 
@@ -44,6 +46,8 @@ class AIBotService {
         const isGroup = remoteJid.endsWith('@g.us');
         const myJid = (socket.user?.id?.split(':')[0] || '').split('@')[0] + '@s.whatsapp.net';
         const myNumber = myJid.split('@')[0];
+        const myLid = socket.user?.lid || socket.authState?.creds?.me?.lid || '';
+        const myLidNumber = myLid ? myLid.split('@')[0] : '';
         const displayName = session?.displayName || sessionId;
 
         // ── ROBUST TEXT EXTRACTION ──
@@ -58,28 +62,31 @@ class AIBotService {
                 "";
         };
         const messageText = getMessageText(msg.message);
+        const lowerText = messageText.toLowerCase();
         const mentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
         // ── TOP-LEVEL LOGGING ──
         if (isGroup) {
             console.log(`📩 [AI-Bot][${displayName}] Incoming group message: ${remoteJid}`);
             console.log(`   - Sender: ${msg.key.participant || 'unknown'}`);
-            console.log(`   - MyBaseJid: ${myJid} | Mentions: ${JSON.stringify(mentions)}`);
+            console.log(`   - MyBaseJid: ${myJid} | MyLid: ${myLid}`);
+            console.log(`   - Mentions in msg: ${JSON.stringify(mentions)}`);
             console.log(`   - Raw Text: "${messageText}"`);
         }
 
         // ── Item #X: GROUP MENTION DETECTION ──
         if (isGroup) {
-            const lowerText = messageText.toLowerCase();
-            // Check if bot is mentioned via official mention, text "@number", or text "@displayName"
+            // Check if bot is mentioned via official mention (JID/LID), text "@number", or text "@displayName"
             const isMentioned = mentions.includes(myJid) ||
+                (myLid && mentions.includes(myLid)) ||
                 mentions.some(m => m.includes(myNumber)) ||
+                (myLidNumber && mentions.some(m => m.includes(myLidNumber))) ||
                 lowerText.includes(`@${myNumber}`) ||
+                (myLidNumber && lowerText.includes(`@${myLidNumber}`)) ||
                 (displayName && lowerText.includes(`@${displayName.toLowerCase()}`));
 
             if (!isMentioned) {
                 // One last greedy check: Does the text contain the word "bot"? 
-                // Useful if the user just says "bot help"
                 if (lowerText.includes('bot')) {
                     console.log(`   - Greedy check: Found 'bot' in text. Proceeding.`);
                 } else {
@@ -95,7 +102,7 @@ class AIBotService {
 
         const isAllowed = await configService.isContactAllowed(remoteJid, userId);
         if (!isAllowed) {
-            let logName = msg.pushName || 'Unknown';
+            let logName = isGroup ? `Grup (${remoteJid.split('@')[0].substring(0, 10)}...)` : (msg.pushName || 'Unknown');
             if (isGroup) {
                 try {
                     console.log(`🔍 [AI-Bot][${displayName}] Attempting to resolve group name for ${remoteJid}`);
