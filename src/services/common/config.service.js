@@ -6,12 +6,26 @@ const supabase = require('../../config/supabase');
  */
 class ConfigService {
     constructor() {
-        this.settingsTable = 'wa_bot_settings';
-        this.promptsTable = 'wa_bot_prompts';
-        this.contactsTable = 'wa_bot_contacts';
-        this.apiKeysTable = 'wa_bot_api_keys';
-        this.userSessionsTable = 'user_sessions';
-        this.blockedAttemptsTable = 'wa_bot_blocked_attempts';
+        this.useProduction = process.env.USE_PRODUCTION_DB === 'true';
+
+        // Dynamic Table Names
+        this.settingsTable = this.getTableName('wa_bot_settings');
+        this.promptsTable = this.getTableName('wa_bot_prompts');
+        this.contactsTable = this.getTableName('wa_bot_contacts');
+        this.apiKeysTable = this.getTableName('wa_bot_api_keys');
+        this.userSessionsTable = this.getTableName('user_sessions');
+        this.blockedAttemptsTable = this.getTableName('wa_bot_blocked_attempts');
+        this.logsTable = this.getTableName('wa_bot_logs');
+    }
+
+    /**
+     * Get table name based on environment (Production vs Local)
+     * @param {string} baseName 
+     * @returns {string}
+     */
+    getTableName(baseName) {
+        // Only append _local if explicitly in development mode
+        return this.useProduction ? baseName : `${baseName}_local`;
     }
 
     async getGeminiApiKey(userId = null) {

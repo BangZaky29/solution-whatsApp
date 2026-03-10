@@ -15,8 +15,10 @@ class LogService {
     log(userId, sessionId, level, message) {
         if (!userId) return; // Silent skip if no user context
 
+        const configService = require('./config.service'); // Ensure dynamic table name
+
         // Fire and forget
-        supabase.from('wa_bot_logs').insert([{
+        supabase.from(configService.logsTable).insert([{
             user_id: userId,
             session_id: sessionId,
             level: level,

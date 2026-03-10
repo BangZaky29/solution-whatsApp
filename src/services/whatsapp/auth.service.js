@@ -49,16 +49,17 @@ function base64ToBuffer(obj) {
 }
 
 async function useSupabaseAuthState(sessionId = 'main-session') {
-    const USE_PRODUCTION = process.env.USE_PRODUCTION_DB === 'true';
+    const configService = require('../common/config.service');
+    const USE_PRODUCTION = configService.useProduction;
 
     // Determine table based on session type for better isolation and scalability
     const isAiSession = sessionId.startsWith('wa-bot-ai') || UUID_REGEX.test(sessionId);
 
     let TABLE_NAME;
     if (isAiSession) {
-        TABLE_NAME = USE_PRODUCTION ? 'wa_ai_sessions' : 'wa_ai_sessions_local';
+        TABLE_NAME = configService.getTableName('wa_ai_sessions');
     } else {
-        TABLE_NAME = USE_PRODUCTION ? 'wa_sessions' : 'wa_sessions_local';
+        TABLE_NAME = configService.getTableName('wa_sessions');
     }
 
     // Strict key partitioning

@@ -6,8 +6,9 @@ const supabase = require('../../config/supabase');
  */
 class HistoryService {
     constructor() {
-        this.useProduction = process.env.USE_PRODUCTION_DB === 'true';
-        this.tableName = this.useProduction ? 'wa_chat_history' : 'wa_chat_history_local';
+        const configService = require('./config.service'); // Note: path might need verification relative to this file
+        this.useProduction = configService.useProduction;
+        this.tableName = configService.getTableName('wa_chat_history');
         this.maxHistory = 100;
         this.proactiveLimit = 7;
     }

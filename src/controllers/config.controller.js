@@ -545,24 +545,27 @@ const wipeAccountData = async (req, res) => {
             console.warn(`⚠️ [wipeAccountData] Storage cleanup exception: ${e.message}`);
         }
 
-        // ── STEP 3: Manual Cascade Deletion (due to missing ON DELETE CASCADE) ──
+        // ── STEP 3: Dynamic Table Deletion based on Environment ──
+        const configService = require('../services/common/config.service');
         const tablesToDelete = [
-            'wa_chat_history',
-            'wa_chat_history_local',
-            'wa_media',
-            'wa_bot_logs',
-            'wa_bot_contacts',
-            'wa_bot_blocked_attempts',
-            'wa_bot_api_keys',
-            'wa_bot_prompts',
-            'user_sessions',
+            configService.getTableName('wa_chat_history'),
+            configService.getTableName('wa_media'),
+            configService.getTableName('wa_bot_logs'),
+            configService.getTableName('wa_bot_contacts'),
+            configService.getTableName('wa_bot_blocked_attempts'),
+            configService.getTableName('wa_bot_api_keys'),
+            configService.getTableName('wa_bot_prompts'),
+            configService.getTableName('user_sessions'),
             'topup_orders',
             'token_transactions',
             'token_balances',
             'subscriptions',
             'otp_codes',
-            'wa_sessions' // Primary session record
+            configService.getTableName('wa_sessions') // Primary session record
         ];
+
+        // Also clean the wa_ai_sessions equivalent if it exists
+        tablesToDelete.push(configService.getTableName('wa_ai_sessions'));
 
         for (const table of tablesToDelete) {
             console.log(`🗑️  [wipeAccountData] Wiping table: ${table}...`);
@@ -572,19 +575,23 @@ const wipeAccountData = async (req, res) => {
                 .eq('user_id', userId);
 
             if (tblErr) {
-                console.warn(`⚠️ [wipeAccountData] Warning deleting from ${table}: ${tblErr.message}`);
+                // Ignore errors for tables that might not exist in local mode (like subscriptions)
+                if (tblErr.code !== '42P01') {
+                    console.warn(`⚠️ [wipeAccountData] Warning deleting from ${table}: ${tblErr.message}`);
+                }
             }
         }
 
         // ── STEP 4: Delete wa_bot_settings (uses pattern in ID) ──
-        console.log(`🗑️  [wipeAccountData] Wiping wa_bot_settings pattern...`);
+        const settingsTable = configService.settingsTable;
+        console.log(`🗑️  [wipeAccountData] Wiping ${settingsTable} pattern...`);
         const { error: settingsErr } = await supabase
-            .from('wa_bot_settings')
+            .from(settingsTable)
             .delete()
             .like('id', `%${userId}%`);
 
         if (settingsErr) {
-            console.warn(`⚠️ [wipeAccountData] Warning deleting from wa_bot_settings: ${settingsErr.message}`);
+            console.warn(`⚠️ [wipeAccountData] Warning deleting from ${settingsTable}: ${settingsErr.message}`);
         }
 
         // ── STEP 5: Delete user from public.users ──
