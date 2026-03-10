@@ -76,11 +76,17 @@ class AIBotService {
 
         // ── Item #X: GROUP MENTION, REPLY & KEYWORD DETECTION ──
         if (isGroup) {
-            const contextInfo = msg.message?.extendedTextMessage?.contextInfo || {};
-            const quotedParticipant = contextInfo.participant || "";
+            // Broad ContextInfo extraction (works for text and media replies)
+            const contextInfo = msg.message?.extendedTextMessage?.contextInfo ||
+                msg.message?.imageMessage?.contextInfo ||
+                msg.message?.videoMessage?.contextInfo ||
+                msg.message?.audioMessage?.contextInfo || {};
 
-            // Check if message is a reply to the bot itself
-            const isReplyToMe = quotedParticipant === myJid || (myLid && quotedParticipant === myJid);
+            const quotedParticipant = contextInfo.participant || "";
+            const quotedBase = quotedParticipant.split(':')[0].split('@')[0];
+
+            // Check if message is a reply to the bot itself (Compare base IDs to skip device suffixes)
+            const isReplyToMe = (quotedBase && (quotedBase === myNumber || (myLidBase && quotedBase === myLidBase)));
 
             const lowerText = messageText.toLowerCase();
 
@@ -110,7 +116,7 @@ class AIBotService {
             else if (isReplyToMe) triggerType = 'REPLY';
             else if (startsWithKeyword) triggerType = 'KEYWORD';
 
-            console.log(`📢 [AI-Bot][${displayName}] Triggered via ${triggerType}. Proceeding.`);
+            console.log(`📢 [AI-Bot][${displayName}] Triggered via ${triggerType} (Quoted: ${quotedParticipant || 'none'}). Proceeding.`);
         }
 
         const participantJid = msg.key.participant || remoteJid;
