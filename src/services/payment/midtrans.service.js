@@ -98,6 +98,18 @@ class MidtransService {
      */
     async _createSnapTransaction(payload) {
         try {
+            if (!this.serverKey) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('🧪 [MidtransService] Mocking transaction for development (No Server Key)');
+                    return {
+                        token: `mock-snap-token-${Date.now()}`,
+                        redirect_url: `https://app.sandbox.midtrans.com/snap/v1/transactions/mock-redirect-${Date.now()}`,
+                        is_mock: true
+                    };
+                }
+                throw new Error('Midtrans Server Key is missing');
+            }
+
             const response = await fetch(`${this.baseUrl}/transactions`, {
                 method: 'POST',
                 headers: {

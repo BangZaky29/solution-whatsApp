@@ -37,7 +37,7 @@ const subscribe = async (req, res) => {
         }
 
         // 1. Get package details
-        const pkg = await paymentService.getPackageById(packageId);
+        const pkg = await paymentService.getPackageById(packageId, userId);
         if (!pkg) {
             return res.status(404).json({ success: false, error: 'Package not found' });
         }
@@ -106,7 +106,11 @@ const subscribe = async (req, res) => {
             redirectUrl: snapResult.redirect_url,
         });
     } catch (error) {
-        console.error('❌ [PaymentController] subscribe error:', error.message);
+        console.error('❌ [PaymentController] subscribe error details:', {
+            message: error.message,
+            stack: error.stack,
+            userId: req.userId
+        });
         res.status(500).json({ success: false, error: error.message });
     }
 };

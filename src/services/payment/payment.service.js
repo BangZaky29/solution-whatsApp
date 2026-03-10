@@ -44,13 +44,28 @@ class PaymentService {
         return data || [];
     }
 
-    async getPackageById(packageId) {
+    async getPackageById(packageId, userId = null) {
         const { data, error } = await supabase
             .from(this.packagesTable)
             .select('*')
             .eq('id', packageId)
             .single();
         if (error) throw error;
+
+        // Apply 80% discount for new users (if userId provided)
+        if (userId) {
+            const isNew = await this.isNewUser(userId);
+            if (isNew) {
+                return {
+                    ...data,
+                    original_price: data.price,
+                    price: Math.round(data.price * 0.2), // 80% discount
+                    has_discount: true,
+                    discount_percentage: 80
+                };
+            }
+        }
+
         return data;
     }
 
