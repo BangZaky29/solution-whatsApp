@@ -179,11 +179,13 @@ class AIBotService {
         const isConfirming = !isMedia && hasPending && confirmKeywords.some(kw => lowerText.includes(kw));
         const isRejecting = !isMedia && hasPending && rejectKeywords.some(kw => lowerText.includes(kw));
 
+        let mediaRecord = null;
+
         if (isMedia) {
             if (hasSaveIntent) {
                 console.log(`📸 [AI-Bot][${displayName}] Media detected WITH save intent. Processing...`);
                 const mediaService = require('../whatsapp/media.service');
-                const mediaRecord = await mediaService.processIncomingMedia(msg, userId);
+                mediaRecord = await mediaService.processIncomingMedia(msg, userId);
                 if (mediaRecord) {
                     await whatsappService.sendMessage(socket, remoteJid, {
                         text: `✅ *Media Berhasil Disimpan*\n\n` +
@@ -205,7 +207,7 @@ class AIBotService {
             console.log(`👍 [AI-Bot][${displayName}] User confirmed media storage. Processing cached media...`);
             const cachedMsg = this.pendingMedia.get(remoteJid);
             const mediaService = require('../whatsapp/media.service');
-            const mediaRecord = await mediaService.processIncomingMedia(cachedMsg, userId);
+            mediaRecord = await mediaService.processIncomingMedia(cachedMsg, userId);
 
             if (mediaRecord) {
                 await whatsappService.sendMessage(socket, remoteJid, {
