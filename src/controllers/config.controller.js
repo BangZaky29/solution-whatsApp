@@ -725,5 +725,6 @@ module.exports = {
     whitelistBlockedAttempt,
     deleteBlockedAttempt,
     deleteHistory,
+    requestWipeOtp,
     wipeAccountData
 };
