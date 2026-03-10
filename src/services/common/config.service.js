@@ -6,16 +6,30 @@ const supabase = require('../../config/supabase');
  */
 class ConfigService {
     constructor() {
-        this.useProduction = process.env.USE_PRODUCTION_DB === 'true';
+        // High-precision environment detection
+        this.NODE_ENV = process.env.NODE_ENV;
+        const useProductionDB = process.env.USE_PRODUCTION_DB === 'true';
 
-        // Dynamic Table Names
-        this.settingsTable = this.getTableName('wa_bot_settings');
-        this.promptsTable = this.getTableName('wa_bot_prompts');
-        this.contactsTable = this.getTableName('wa_bot_contacts');
-        this.apiKeysTable = this.getTableName('wa_bot_api_keys');
+        // Result: only use production tables if BOTH are set to production
+        // This ensures local development stays safe by default.
+        this.useProduction = (this.NODE_ENV === 'production' && useProductionDB);
+
+        console.log(`\n🔧 [ConfigService] Mode: ${this.useProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+        console.log(`🔧 [ConfigService] NODE_ENV: ${this.NODE_ENV}`);
+        console.log(`🔧 [ConfigService] USE_PRODUCTION_DB: ${useProductionDB}`);
+        console.log(`🔧 [ConfigService] Target Session Table: ${this.getTableName('user_sessions')}\n`);
+
+        // Dynamic Table Names (Only actual WA sessions are isolated)
+        this.settingsTable = 'wa_bot_settings';
+        this.promptsTable = 'wa_bot_prompts';
+        this.contactsTable = 'wa_bot_contacts';
+        this.apiKeysTable = 'wa_bot_api_keys';
         this.userSessionsTable = this.getTableName('user_sessions');
-        this.blockedAttemptsTable = this.getTableName('wa_bot_blocked_attempts');
-        this.logsTable = this.getTableName('wa_bot_logs');
+        this.blockedAttemptsTable = 'wa_bot_blocked_attempts';
+        this.logsTable = 'wa_bot_logs';
+        this.otpCodesTable = 'otp_codes';
+        this.mediaTable = 'wa_media';
+        this.historyTable = 'wa_chat_history';
     }
 
     /**
@@ -304,13 +318,16 @@ class ConfigService {
     async getUserDisplay(userId) {
         try {
             if (!userId || userId === 'null' || userId === 'undefined') return 'System';
-            const { data } = await supabase.from('users').select('username, full_name').eq('id', userId).single();
-            if (!data) {
-                console.log(`👤 [getUserDisplay] No user found for UUID: ${userId}`);
-                return userId;
+
+            const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!UUID_REGEX.test(userId)) {
+                return userId; // Return as is for non-UUIDs (system IDs)
             }
+
+            const { data } = await supabase.from('users').select('username, full_name').eq('id', userId).single();
+            if (!data) return userId;
+
             const name = data.full_name || data.username || userId;
-            console.log(`👤 [getUserDisplay] Resolved ${userId} -> ${name}`);
             return name;
         } catch (err) { return userId; }
     }
@@ -331,6 +348,68 @@ class ConfigService {
         if (!userId || userId === 'null') return false;
         const key = `ai_controls:${userId}`;
         return await this.updateSetting(key, controls);
+    }
+
+    /**
+     * Get enriched AI instances with user info
+     * @returns {Promise<Array>}
+     */
+    async getEnrichedAIInstances() {
+        try {
+            const query = supabase
+                .from(this.userSessionsTable)
+                .select(`
+                    user_id,
+                    wa_session_id,
+                    is_primary,
+                    created_at,
+                    users (
+                        full_name,
+                        email,
+                        phone,
+                        role,
+                        username
+                    )
+                `);
+
+            const { data, error } = await query;
+
+            // Handle "Relationship not found" or schema cache errors
+            if (error) {
+                console.warn(`⚠️ [ConfigService] Join failed (missing relationship?), falling back to manual join:`, error.message);
+
+                // Fallback: Manual join
+                const { data: rawSessions, error: sErr } = await supabase
+                    .from(this.userSessionsTable)
+                    .select('*');
+
+                if (sErr || !rawSessions) throw sErr || new Error('Failed to fetch sessions');
+
+                const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                const userIds = rawSessions
+                    .map(s => s.user_id)
+                    .filter(id => UUID_REGEX.test(id));
+
+                if (userIds.length === 0) {
+                    return rawSessions.map(s => ({ ...s, users: null }));
+                }
+
+                const { data: users, error: uErr } = await supabase
+                    .from('users')
+                    .select('id, full_name, email, phone, role, username')
+                    .in('id', userIds);
+
+                return rawSessions.map(s => ({
+                    ...s,
+                    users: users?.find(u => u.id === s.user_id) || null
+                }));
+            }
+
+            return data || [];
+        } catch (err) {
+            console.error(`❌ [ConfigService] getEnrichedAIInstances error:`, err.message);
+            return [];
+        }
     }
 }
 

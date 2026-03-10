@@ -126,11 +126,9 @@ class ConnectionService {
 
                         console.log(`\n${category} :\n✅ [${sessionData.displayName}] Connected! Phone: ${sessionData.connectionState.phoneNumber}\n`);
 
-                        // PERSISTENCE: If sessionId is a UUID, record it in user_sessions
-                        if (UUID_REGEX.test(sessionId)) {
-                            console.log(`\n[Recording session...]:\n💾 [${sessionData.displayName}] Recording session for user in database...`);
-                            await configService.upsertUserSession(sessionId, socket.user.id);
-                        }
+                        // PERSISTENCE: Record success in session registry so it can be restored on boot
+                        console.log(`💾 [${sessionData.displayName}] Recording session registry...`);
+                        await configService.upsertUserSession(sessionId, socket.user.id);
                     }
 
                     if (connection === 'close') {

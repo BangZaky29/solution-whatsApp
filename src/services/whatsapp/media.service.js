@@ -1,5 +1,6 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const supabase = require('../../config/supabase');
+const configService = require('../common/config.service');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
@@ -85,7 +86,7 @@ class MediaService {
             };
 
             const { error: dbError } = await supabase
-                .from('wa_media')
+                .from(configService.mediaTable)
                 .insert(mediaRecord);
 
             if (dbError) {

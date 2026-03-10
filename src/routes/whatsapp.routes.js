@@ -7,6 +7,7 @@ const { validateSession } = require('../middleware/session.middleware');
 const { userAuth } = require('../middleware/userAuth.middleware');
 
 // Session Routes
+router.get('/instances/enriched', userAuth, sessionController.getEnrichedInstances);
 router.post('/:sessionId/init', userAuth, sessionController.initSession);
 router.get('/:sessionId/status', validateSession, sessionController.getStatus);
 router.get('/:sessionId/qr', validateSession, sessionController.getQrCode);

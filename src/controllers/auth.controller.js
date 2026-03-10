@@ -3,6 +3,7 @@ const csBotService = require('../services/ai/csBot.service');
 const crypto = require('crypto');
 const paymentService = require('../services/payment/payment.service');
 const notificationService = require('../services/payment/notification.service');
+const configService = require('../services/common/config.service');
 
 /**
  * Normalizes Indonesian phone numbers to 62... format
@@ -44,7 +45,7 @@ const register = async (req, res) => {
 
         // 2. Check for existing valid OTP
         const { data: existingOtp } = await supabase
-            .from('otp_codes')
+            .from(configService.otpCodesTable)
             .select('*')
             .eq('user_id', user.id)
             .eq('is_used', false)
@@ -63,7 +64,7 @@ const register = async (req, res) => {
             const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
             const { error: otpError } = await supabase
-                .from('otp_codes')
+                .from(configService.otpCodesTable)
                 .insert({ user_id: user.id, code: otpCodes, expires_at: expiresAt });
 
             if (otpError) throw otpError;
@@ -124,7 +125,7 @@ const login = async (req, res) => {
 
         // 3. Check for existing valid OTP
         const { data: existingOtp } = await supabase
-            .from('otp_codes')
+            .from(configService.otpCodesTable)
             .select('*')
             .eq('user_id', user.id)
             .eq('is_used', false)
@@ -172,7 +173,7 @@ const verifyOtp = async (req, res) => {
         const { userId, code } = req.body;
 
         const { data: otp, error } = await supabase
-            .from('otp_codes')
+            .from(configService.otpCodesTable)
             .select('*')
             .eq('user_id', userId)
             .eq('code', code)

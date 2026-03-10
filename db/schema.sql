@@ -81,6 +81,15 @@ CREATE TABLE public.user_sessions (
   CONSTRAINT user_sessions_pkey PRIMARY KEY (id),
   CONSTRAINT user_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.user_sessions_local (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid UNIQUE,
+  wa_session_id text NOT NULL,
+  is_primary boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_sessions_local_pkey PRIMARY KEY (id),
+  CONSTRAINT user_sessions_local_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   phone text NOT NULL UNIQUE,

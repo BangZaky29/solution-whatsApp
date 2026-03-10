@@ -158,15 +158,5 @@
         "cmd": "ALL",
         "qual": "true",
         "with_check": "true"
-    },
-    {
-        "schemaname": "public",
-        "tablename": "wa_sessions_local",
-        "policyname": "Allow all access",
-        "permissive": "PERMISSIVE",
-        "roles": "{public}",
-        "cmd": "ALL",
-        "qual": "true",
-        "with_check": "true"
     }
 ]

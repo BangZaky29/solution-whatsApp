@@ -38,7 +38,8 @@ app.use(cors({
         'https://nuansasolution.id',
         'https://new-wa-bot-ai.bangzaky0029.workers.dev',
         'http://localhost:5173',
-        'http://localhost:5174'
+        'http://localhost:5174',
+        'http://localhost:3000'
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -249,16 +250,9 @@ async function startServer() {
         console.log(`${'='.repeat(50)}\n`);
     });
 
-    // Auto-restore all active sessions from database
+    // Auto-restore all active sessions from database (respects NODE_ENV)
     const dbSessions = await configService.getAllUserSessions();
-    const initialSessions = [
-        process.env.SESSION_ID || 'main-session',
-        'CS-BOT',
-        ...dbSessions
-    ];
-
-    // Remove duplicates
-    const uniqueSessions = [...new Set(initialSessions)];
+    const uniqueSessions = [...new Set(dbSessions)];
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
     const singleSessions = uniqueSessions.filter(id => !UUID_REGEX.test(id) && id !== 'wa-bot-ai');

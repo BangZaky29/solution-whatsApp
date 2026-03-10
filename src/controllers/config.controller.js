@@ -51,7 +51,7 @@ const upsertPrompt = async (req, res) => {
         if (id) {
             // Update existing
             result = await supabase
-                .from('wa_bot_prompts')
+                .from(configService.promptsTable)
                 .update(promptData)
                 .eq('id', id)
                 .select();
@@ -61,7 +61,7 @@ const upsertPrompt = async (req, res) => {
             const features = await paymentService.getUserFeatures(userId);
             if (features.has_subscription && features.max_prompts < 999) {
                 const { count } = await supabase
-                    .from('wa_bot_prompts')
+                    .from(configService.promptsTable)
                     .select('*', { count: 'exact', head: true })
                     .eq('user_id', userId);
                 if (count >= features.max_prompts) {
@@ -72,7 +72,7 @@ const upsertPrompt = async (req, res) => {
                 }
             }
             result = await supabase
-                .from('wa_bot_prompts')
+                .from(configService.promptsTable)
                 .insert(promptData)
                 .select();
         }
@@ -109,7 +109,7 @@ const updatePrompt = async (req, res) => {
         const userId = req.userId;
         const { id } = req.params;
         const { name, content } = req.body;
-        let query = supabase.from('wa_bot_prompts').update({ name, content }).eq('id', id).eq('user_id', userId);
+        let query = supabase.from(configService.promptsTable).update({ name, content }).eq('id', id).eq('user_id', userId);
         const { error } = await query;
         if (error) {
             console.error(`❌ [updatePrompt] Error:`, error.message);
@@ -126,7 +126,7 @@ const deletePrompt = async (req, res) => {
     try {
         const userId = req.userId;
         const { id } = req.params;
-        let query = supabase.from('wa_bot_prompts').delete().eq('id', id).eq('user_id', userId);
+        let query = supabase.from(configService.promptsTable).delete().eq('id', id).eq('user_id', userId);
         const { error } = await query;
         if (error) {
             console.error(`❌ [deletePrompt] Error:`, error.message);
@@ -171,7 +171,7 @@ const addContact = async (req, res) => {
         const features = await paymentService.getUserFeatures(userId);
         if (features.has_subscription && features.max_contacts < 999) {
             const { count } = await supabase
-                .from('wa_bot_contacts')
+                .from(configService.contactsTable)
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', userId);
             if (count >= features.max_contacts) {
@@ -218,7 +218,7 @@ const updateContact = async (req, res) => {
         const userId = req.userId;
         const { jid } = req.params;
         const { name } = req.body;
-        let query = supabase.from('wa_bot_contacts').update({ push_name: name }).eq('jid', jid).eq('user_id', userId);
+        let query = supabase.from(configService.contactsTable).update({ push_name: name }).eq('jid', jid).eq('user_id', userId);
         const { error } = await query;
         if (error) {
             console.error(`❌ [updateContact] Error:`, error.message);
@@ -325,7 +325,7 @@ const addKey = async (req, res) => {
         }
         if (features.has_subscription && features.max_api_keys < 999) {
             const { count } = await supabase
-                .from('wa_bot_api_keys')
+                .from(configService.apiKeysTable)
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', userId);
             if (count >= features.max_api_keys) {
@@ -560,7 +560,7 @@ const wipeAccountData = async (req, res) => {
             'token_transactions',
             'token_balances',
             'subscriptions',
-            'otp_codes',
+            configService.otpCodesTable,
             configService.getTableName('wa_sessions') // Primary session record
         ];
 
