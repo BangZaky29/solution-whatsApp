@@ -38,7 +38,23 @@ class AIBotService {
 
         if (!userId && sessionId !== 'wa-bot-ai') return;
         const remoteJid = msg.key.remoteJid;
-        if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') return;
+        if (!remoteJid || remoteJid === 'status@broadcast') return;
+
+        const isGroup = remoteJid.endsWith('@g.us');
+        const myJid = socket.user?.id?.split(':')[0] + '@s.whatsapp.net';
+        const myNumber = myJid.split('@')[0];
+
+        // ── Item #X: GROUP MENTION DETECTION ──
+        if (isGroup) {
+            const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+            const mentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+
+            // Check if bot is mentioned via official mention or text "@number"
+            const isMentioned = mentions.includes(myJid) || messageText.includes(`@${myNumber}`);
+
+            if (!isMentioned) return; // Ignore groups unless mentioned
+            console.log(`📢 [AI-Bot][${displayName}] Mentioned in group: ${remoteJid}`);
+        }
 
         const senderId = remoteJid.split('@')[0].split(':')[0];
         const cleanSender = senderId.replace(/\D/g, '');
