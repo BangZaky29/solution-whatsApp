@@ -26,10 +26,16 @@ const normalizePhone = (phone) => {
  */
 const register = async (req, res) => {
     try {
-        let { phone, username, full_name, password } = req.body;
+        let { phone, username, full_name, password, email } = req.body;
 
-        if (!phone || !username) {
-            return res.status(400).json({ success: false, error: 'Phone and Username are required' });
+        if (!phone || !username || !email) {
+            return res.status(400).json({ success: false, error: 'Phone, Username, and Email are required' });
+        }
+
+        // Basic Email Validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ success: false, error: 'Invalid email format' });
         }
 
         phone = normalizePhone(phone);
@@ -37,7 +43,7 @@ const register = async (req, res) => {
         // 1. Create user in Supabase
         const { data: user, error: userError } = await supabase
             .from('users')
-            .upsert({ phone, username, full_name, password_hash: password }, { onConflict: 'phone' })
+            .upsert({ phone, username, full_name, password_hash: password, email }, { onConflict: 'phone' })
             .select()
             .single();
 
