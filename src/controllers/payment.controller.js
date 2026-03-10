@@ -14,7 +14,8 @@ const supabase = require('../config/supabase');
 
 const getPackages = async (req, res) => {
     try {
-        const packages = await paymentService.getAllPackages();
+        const userId = req.headers['x-session-id'] || req.headers['X-Session-Id'];
+        const packages = await paymentService.getAllPackages(userId);
         res.json({ success: true, packages });
     } catch (error) {
         console.error('❌ [PaymentController] getPackages error:', error.message);

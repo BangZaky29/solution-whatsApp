@@ -87,13 +87,9 @@ const register = async (req, res) => {
             userId: user.id
         });
 
-        // Grant trial (async, don't block response)
-        paymentService.grantTrial(user.id).then(() => {
-            notificationService.notifyRegistration(phone, full_name || username || 'User');
-            console.log(`🎉 [Register] Trial granted for ${username}`);
-        }).catch(err => {
-            console.error(`❌ [Register] Failed to grant trial:`, err.message);
-        });
+        // Notify registration (async)
+        notificationService.notifyRegistration(phone, full_name || username || 'User');
+        console.log(`🎉 [Register] User registered: ${username}`);
 
     } catch (error) {
         console.error('Registration error:', error);
