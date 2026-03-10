@@ -19,6 +19,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 class AIBotService {
     constructor() {
         this.config = { systemPrompt: "" };
+        this.pendingMedia = new Map(); // Store { remoteJid: msg }
         console.log(`🤖 [AI-Bot] Service initialized for multi-user mode`);
     }
 
@@ -167,17 +168,61 @@ class AIBotService {
         const messageType = msg.message ? Object.keys(msg.message)[0] : null;
         // messageText is already defined above
 
-        // --- NEW: MEDIA HANDLING ---
+        // ── Item #X: DEFENSIVE MEDIA HANDLING ──
         const isMedia = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage'].includes(messageType);
-        let mediaRecord = null;
+        const saveKeywords = ['simpan', 'save', 'store', 'unggah', 'upload'];
+        const confirmKeywords = ['iya', 'iyah', 'yes', 'ok', 'boleh', 'siap', 'simpan', 'save'];
+        const rejectKeywords = ['tidak', 'gak', 'nggak', 'no', 'batal', 'cancel', 'gausah'];
+
+        const hasSaveIntent = isMedia && saveKeywords.some(kw => lowerText.includes(kw));
+        const hasPending = this.pendingMedia.has(remoteJid);
+        const isConfirming = !isMedia && hasPending && confirmKeywords.some(kw => lowerText.includes(kw));
+        const isRejecting = !isMedia && hasPending && rejectKeywords.some(kw => lowerText.includes(kw));
 
         if (isMedia) {
-            const mediaService = require('../whatsapp/media.service');
-            mediaRecord = await mediaService.processIncomingMedia(msg, userId);
-            if (mediaRecord) {
-                console.log(`📸 [AI-Bot][${displayName}] Media detected: ${mediaRecord.public_url}`);
-                logService.info(userId, sessionId, `Received ${mediaRecord.file_type}: ${mediaRecord.public_url}`);
+            if (hasSaveIntent) {
+                console.log(`📸 [AI-Bot][${displayName}] Media detected WITH save intent. Processing...`);
+                const mediaService = require('../whatsapp/media.service');
+                const mediaRecord = await mediaService.processIncomingMedia(msg, userId);
+                if (mediaRecord) {
+                    await whatsappService.sendMessage(socket, remoteJid, {
+                        text: `✅ *Media Berhasil Disimpan*\n\n` +
+                            `📝 *Nama:* ${mediaRecord.file_name}\n` +
+                            `📁 *Tipe:* ${mediaRecord.file_type}\n` +
+                            `📡 *Status:* Tersimpan di Cloud (Supabase)\n` +
+                            `🔗 *URL:* ${mediaRecord.public_url}`
+                    }, { quoted: msg });
+                }
+            } else {
+                console.log(`📸 [AI-Bot][${displayName}] Media detected WITHOUT intent. Caching for confirmation.`);
+                this.pendingMedia.set(remoteJid, msg);
+                await whatsappService.sendMessage(socket, remoteJid, {
+                    text: `📸 *Media Terdeteksi*\n\nbro lu ngirim ${messageType.replace('Message', '')} mau disimpan gak?`
+                }, { quoted: msg });
+                return; // Wait for confirmation
             }
+        } else if (isConfirming) {
+            console.log(`👍 [AI-Bot][${displayName}] User confirmed media storage. Processing cached media...`);
+            const cachedMsg = this.pendingMedia.get(remoteJid);
+            const mediaService = require('../whatsapp/media.service');
+            const mediaRecord = await mediaService.processIncomingMedia(cachedMsg, userId);
+
+            if (mediaRecord) {
+                await whatsappService.sendMessage(socket, remoteJid, {
+                    text: `✅ *Media Berhasil Disimpan*\n\n` +
+                        `📝 *Nama:* ${mediaRecord.file_name}\n` +
+                        `📁 *Tipe:* ${mediaRecord.file_type}\n` +
+                        `📡 *Status:* Tersimpan di Cloud (Supabase)\n` +
+                        `🔗 *URL:* ${mediaRecord.public_url}`
+                }, { quoted: msg });
+            }
+            this.pendingMedia.delete(remoteJid);
+            return;
+        } else if (isRejecting) {
+            console.log(`🛑 [AI-Bot][${displayName}] User rejected media storage. Clearing cache.`);
+            this.pendingMedia.delete(remoteJid);
+            await whatsappService.sendMessage(socket, remoteJid, { text: "Oke bro, media gak bakal gue simpan. 👌" }, { quoted: msg });
+            return;
         }
 
         if (!messageText && !isMedia) return;
