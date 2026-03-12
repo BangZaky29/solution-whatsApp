@@ -321,16 +321,43 @@ class AIBotService {
                 await socket.sendMessage(remoteJid, { text: cleanResponse });
             }
 
+            const axios = require('axios');
+
+            async function fetchMediaBuffer(url) {
+                try {
+                    const response = await axios.get(url, { responseType: 'arraybuffer' });
+                    return Buffer.from(response.data, 'binary');
+                } catch (error) {
+                    console.error(`❌ [AI-Bot][${displayName}] Failed to fetch media from URL: ${url}`, error.message);
+                    return null;
+                }
+            }
+
             // Send actual media if parsed
             if (imageUrl) {
                 console.log(`📤 [AI-Bot][${displayName}] AI sending IMAGE: ${imageUrl}`);
-                await socket.sendMessage(remoteJid, { image: { url: imageUrl }, caption: "Ini kak fotonya... 😉" });
+                const buffer = await fetchMediaBuffer(imageUrl);
+                if (buffer) {
+                    await socket.sendMessage(remoteJid, { image: buffer, caption: "Ini kak fotonya... 😉" });
+                } else {
+                    await socket.sendMessage(remoteJid, { text: `*(Gagal mengirim gambar. Link: ${imageUrl})*` });
+                }
             } else if (videoUrl) {
                 console.log(`📤 [AI-Bot][${displayName}] AI sending VIDEO: ${videoUrl}`);
-                await socket.sendMessage(remoteJid, { video: { url: videoUrl } });
+                const buffer = await fetchMediaBuffer(videoUrl);
+                if (buffer) {
+                    await socket.sendMessage(remoteJid, { video: buffer });
+                } else {
+                    await socket.sendMessage(remoteJid, { text: `*(Gagal mengirim video. Link: ${videoUrl})*` });
+                }
             } else if (audioUrl) {
                 console.log(`📤 [AI-Bot][${displayName}] AI sending AUDIO: ${audioUrl}`);
-                await socket.sendMessage(remoteJid, { audio: { url: audioUrl }, mimetype: 'audio/mp4', ptt: true });
+                const buffer = await fetchMediaBuffer(audioUrl);
+                if (buffer) {
+                    await socket.sendMessage(remoteJid, { audio: buffer, mimetype: 'audio/mp4', ptt: true });
+                } else {
+                    await socket.sendMessage(remoteJid, { text: `*(Gagal mengirim audio. Link: ${audioUrl})*` });
+                }
             }
 
             await configService.incrementStat('responses', userId);
