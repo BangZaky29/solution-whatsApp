@@ -28,6 +28,7 @@ const { startProactiveAiJob } = require('./src/jobs/proactiveAi.job');
 const { startHistoryCleanupJob } = require('./src/jobs/historyCleanup.job');
 const { startSubscriptionExpiryJob } = require('./src/jobs/subscriptionExpiry.job');
 const { restoreSessions } = require('./src/bootstrap/restoreSessions');
+const { startSessionWatchdogJob } = require('./src/jobs/sessionWatchdog.job');
 
 // Routes
 const whatsappRoutes = require('./src/routes/whatsapp.routes');
@@ -104,6 +105,7 @@ startPresenceJob(sessionManager);
 startProactiveAiJob(sessionManager);
 startHistoryCleanupJob();
 startSubscriptionExpiryJob();
+startSessionWatchdogJob(); // Monitor and auto-reconnect WhatsApp sessions
 
 // ============================================
 // Start Server

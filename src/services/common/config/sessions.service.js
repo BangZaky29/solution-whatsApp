@@ -1,14 +1,30 @@
-﻿const supabase = require('../../../config/supabase');
+const supabase = require('../../../config/supabase');
 
 async function upsertUserSession(userId, waSessionId, isPrimary = false) {
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isSystemSession = !UUID_REGEX.test(userId);
+
     try {
-        return await supabase.from(this.userSessionsTable).upsert({
-            user_id: userId,
+        const payload = {
             wa_session_id: waSessionId,
             is_primary: isPrimary,
-            created_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-    } catch (err) { return false; }
+            updated_at: new Date().toISOString()
+        };
+
+        // If it's a UUID, it's a user session
+        if (!isSystemSession) {
+            payload.user_id = userId;
+            return await supabase.from(this.userSessionsTable).upsert(payload, { onConflict: 'user_id' });
+        } else {
+            // It's a system session (like CS-BOT or main-session)
+            // We use wa_session_id as the primary identifier if user_id is null/invalid
+            payload.user_id = null;
+            return await supabase.from(this.userSessionsTable).upsert(payload, { onConflict: 'wa_session_id' });
+        }
+    } catch (err) {
+        console.error(`[ConfigService] upsertUserSession error:`, err.message);
+        return false;
+    }
 }
 
 async function removeUserSession(waSessionId) {
@@ -19,8 +35,9 @@ async function removeUserSession(waSessionId) {
 
 async function getAllUserSessions() {
     try {
-        const { data } = await supabase.from(this.userSessionsTable).select('user_id');
-        return data?.map(s => s.user_id) || [];
+        const { data } = await supabase.from(this.userSessionsTable).select('user_id, wa_session_id');
+        // Return wa_session_id primarily, fallback to user_id (which is usually the same for AI bots)
+        return data?.map(s => s.wa_session_id || s.user_id).filter(id => id) || [];
     } catch (err) { return []; }
 }
 
