@@ -1,4 +1,21 @@
 const whatsappService = require('../whatsapp/whatsapp.service');
+const {
+    buildPaymentPendingMessage,
+    buildPaymentSuccessMessage,
+    buildPaymentFailedMessage
+} = require('./notification/payment.messages');
+const { buildTopupSuccessMessage } = require('./notification/topup.messages');
+const {
+    buildTokenLowMessage,
+    buildTokenDepletedMessage,
+    buildSubscriptionExpiredMessage,
+    buildSubscriptionExpiringSoonMessage
+} = require('./notification/token.messages');
+const {
+    buildRegistrationMessage,
+    buildLoginMessage
+} = require('./notification/auth.messages');
+const { buildTrialExpiringMessage } = require('./notification/trial.messages');
 
 /**
  * Notification Service
@@ -41,54 +58,17 @@ class NotificationService {
     // ═══════════════════════════════════════════
 
     async notifyPaymentPending(phone, userName, packageName, orderId) {
-        const message = [
-            `💳 *PEMBAYARAN MENUNGGU*`,
-            ``,
-            `Halo ${userName},`,
-            `Pesanan Anda sedang menunggu pembayaran.`,
-            ``,
-            `📦 Paket: *${packageName}*`,
-            `🆔 Order ID: \`${orderId}\``,
-            ``,
-            `Silakan selesaikan pembayaran Anda segera.`,
-            `Terima kasih! 🙏`,
-        ].join('\n');
-
+        const message = buildPaymentPendingMessage(userName, packageName, orderId);
         return await this._send(phone, message);
     }
 
     async notifyPaymentSuccess(phone, userName, packageName, tokenAmount, expiresAt) {
-        const expDate = new Date(expiresAt).toLocaleDateString('id-ID', {
-            day: 'numeric', month: 'long', year: 'numeric'
-        });
-
-        const message = [
-            `✅ *PEMBAYARAN BERHASIL!*`,
-            ``,
-            `Halo ${userName},`,
-            `Pembayaran Anda telah berhasil diproses.`,
-            ``,
-            `📦 Paket: *${packageName}*`,
-            `🎫 Token: *${tokenAmount.toLocaleString()} token*`,
-            `📅 Berlaku hingga: *${expDate}*`,
-            ``,
-            `Selamat menggunakan WA-BOT-AI! 🤖✨`,
-        ].join('\n');
-
+        const message = buildPaymentSuccessMessage(userName, packageName, tokenAmount, expiresAt);
         return await this._send(phone, message);
     }
 
     async notifyPaymentFailed(phone, userName, packageName) {
-        const message = [
-            `❌ *PEMBAYARAN GAGAL*`,
-            ``,
-            `Halo ${userName},`,
-            `Pembayaran untuk paket *${packageName}* gagal atau dibatalkan.`,
-            ``,
-            `Silakan coba lagi melalui dashboard.`,
-            `Jika ada kendala, hubungi admin.`,
-        ].join('\n');
-
+        const message = buildPaymentFailedMessage(userName, packageName);
         return await this._send(phone, message);
     }
 
@@ -97,18 +77,7 @@ class NotificationService {
     // ═══════════════════════════════════════════
 
     async notifyTopupSuccess(phone, userName, tokenAmount, newBalance) {
-        const message = [
-            `✅ *TOP-UP TOKEN BERHASIL!*`,
-            ``,
-            `Halo ${userName},`,
-            `Top-up token Anda telah berhasil.`,
-            ``,
-            `🎫 Token ditambahkan: *+${tokenAmount.toLocaleString()}*`,
-            `💰 Saldo saat ini: *${newBalance.toLocaleString()} token*`,
-            ``,
-            `Terima kasih! 🙏`,
-        ].join('\n');
-
+        const message = buildTopupSuccessMessage(userName, tokenAmount, newBalance);
         return await this._send(phone, message);
     }
 
@@ -117,57 +86,22 @@ class NotificationService {
     // ═══════════════════════════════════════════
 
     async notifyTokenLow(phone, userName, balance) {
-        const message = [
-            `⚠️ *PERINGATAN: TOKEN HAMPIR HABIS*`,
-            ``,
-            `Halo ${userName},`,
-            `Sisa token Anda tinggal *${balance} token*.`,
-            ``,
-            `Segera lakukan top-up agar bot AI tetap aktif.`,
-            `Buka dashboard → Billing → Top-up Token`,
-        ].join('\n');
-
+        const message = buildTokenLowMessage(userName, balance);
         return await this._send(phone, message);
     }
 
     async notifyTokenDepleted(phone, userName) {
-        const message = [
-            `🚫 *TOKEN HABIS*`,
-            ``,
-            `Halo ${userName},`,
-            `Token Anda telah habis. Bot AI tidak dapat membalas pesan.`,
-            ``,
-            `Silakan top-up token melalui dashboard.`,
-        ].join('\n');
-
+        const message = buildTokenDepletedMessage(userName);
         return await this._send(phone, message);
     }
 
     async notifySubscriptionExpired(phone, userName, packageName) {
-        const message = [
-            `⏰ *LANGGANAN BERAKHIR*`,
-            ``,
-            `Halo ${userName},`,
-            `Paket *${packageName}* Anda telah berakhir.`,
-            ``,
-            `Bot AI Anda sekarang dalam mode non-aktif.`,
-            `Perpanjang langganan di dashboard → Billing.`,
-        ].join('\n');
-
+        const message = buildSubscriptionExpiredMessage(userName, packageName);
         return await this._send(phone, message);
     }
 
     async notifySubscriptionExpiringSoon(phone, userName, packageName, daysLeft) {
-        const message = [
-            `📢 *LANGGANAN SEGERA BERAKHIR*`,
-            ``,
-            `Halo ${userName},`,
-            `Paket *${packageName}* Anda akan berakhir dalam *${daysLeft} hari*.`,
-            ``,
-            `Perpanjang segera agar layanan bot tidak terputus.`,
-            `Buka dashboard → Billing → Perpanjang Paket`,
-        ].join('\n');
-
+        const message = buildSubscriptionExpiringSoonMessage(userName, packageName, daysLeft);
         return await this._send(phone, message);
     }
 
@@ -176,33 +110,12 @@ class NotificationService {
     // ═══════════════════════════════════════════
 
     async notifyRegistration(phone, userName) {
-        const message = [
-            `🎉 *SELAMAT DATANG DI WA-BOT-AI!*`,
-            ``,
-            `Halo ${userName},`,
-            `Akun Anda berhasil didaftarkan.`,
-            ``,
-            `🚀 *NEW USER PROMO:*`,
-            `Dapatkan diskon *80%* untuk semua paket pembelian pertama Anda! ✨`,
-            ``,
-            `Berlangganan sekarang di dashboard untuk mulai menggunakan fitur AI.`,
-            ``,
-            `Selamat mencoba! 🚀`,
-        ].join('\n');
-
+        const message = buildRegistrationMessage(userName);
         return await this._send(phone, message);
     }
 
     async notifyLogin(phone, userName) {
-        const message = [
-            `🔐 *LOGIN BERHASIL*`,
-            ``,
-            `Halo ${userName},`,
-            `Anda baru saja login ke WA-BOT-AI.`,
-            ``,
-            `Jika bukan Anda, segera hubungi admin.`,
-        ].join('\n');
-
+        const message = buildLoginMessage(userName);
         return await this._send(phone, message);
     }
 
@@ -211,20 +124,7 @@ class NotificationService {
     // ═══════════════════════════════════════════
 
     async notifyTrialExpiring(phone, userName) {
-        const message = [
-            `⏳ *TRIAL HAMPIR BERAKHIR*`,
-            ``,
-            `Halo ${userName},`,
-            `Trial gratis 3 hari Anda akan segera berakhir.`,
-            ``,
-            `Berlangganan sekarang untuk terus menggunakan WA-BOT-AI:`,
-            `🟢 Basic — Rp 49.000/bln`,
-            `🔵 Premium — Rp 99.000/bln`,
-            `🟣 Pro — Rp 199.000/bln`,
-            ``,
-            `Buka dashboard → Billing untuk berlangganan.`,
-        ].join('\n');
-
+        const message = buildTrialExpiringMessage(userName);
         return await this._send(phone, message);
     }
 }

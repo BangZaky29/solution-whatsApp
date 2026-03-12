@@ -23,6 +23,12 @@ const sessionManager = require('./src/services/whatsapp/session.manager');
 const connectionService = require('./src/services/whatsapp/connection.service');
 const configService = require('./src/services/common/config.service');
 
+const { startPresenceJob } = require('./src/jobs/presence.job');
+const { startProactiveAiJob } = require('./src/jobs/proactiveAi.job');
+const { startHistoryCleanupJob } = require('./src/jobs/historyCleanup.job');
+const { startSubscriptionExpiryJob } = require('./src/jobs/subscriptionExpiry.job');
+const { restoreSessions } = require('./src/bootstrap/restoreSessions');
+
 // Routes
 const whatsappRoutes = require('./src/routes/whatsapp.routes');
 const authRoutes = require('./src/routes/auth.routes');
@@ -94,116 +100,10 @@ app.use(errorHandler);
 // Proactive Logic
 // ============================================
 
-// Send presence update periodically
-setInterval(() => {
-    sessionManager.forEach(({ socket, connectionState }, sessionId) => {
-        if (socket && connectionState.connection === 'open') {
-            try {
-                socket.sendPresenceUpdate('available');
-            } catch (err) {
-                console.error(`⚠️ [${sessionId}] Keep-alive error:`, err.message);
-            }
-        }
-    });
-}, 30000);
-
-// Proactive AI Mechanism
-setInterval(async () => {
-    const aiBotService = require('./src/services/ai/aiBot.service');
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    sessionManager.forEach(async (session, sessionId) => {
-        if ((UUID_REGEX.test(sessionId) || sessionId === 'wa-bot-ai') &&
-            session.socket &&
-            session.connectionState.connection === 'open') {
-            await aiBotService.checkAndSendProactiveMessage(sessionId, session.socket);
-        }
-    });
-}, 15 * 60 * 1000);
-
-// 24h Storage Cleanup
-setInterval(async () => {
-    const historyService = require('./src/services/common/history.service');
-    await historyService.clearAllHistory();
-}, 24 * 60 * 60 * 1000);
-
-// ============================================
-// Subscription Expiry Cron (every 1 hour)
-// ============================================
-setInterval(async () => {
-    try {
-        const paymentService = require('./src/services/payment/payment.service');
-        const notificationService = require('./src/services/payment/notification.service');
-        const supabase = require('./src/config/supabase');
-
-        // 1. Expire overdue subscriptions
-        const expired = await paymentService.checkAndExpireSubscriptions();
-        for (const sub of expired) {
-            try {
-                const { data: user } = await supabase
-                    .from('users')
-                    .select('phone, full_name, username')
-                    .eq('id', sub.user_id)
-                    .single();
-
-                if (user?.phone) {
-                    await notificationService.notifySubscriptionExpired(
-                        user.phone,
-                        user.full_name || user.username || 'User',
-                        sub.packages?.display_name || 'Unknown'
-                    );
-                }
-            } catch (e) {
-                console.error(`❌ [Cron] Notification error for expired sub:`, e.message);
-            }
-        }
-
-        // Item #4: Notify subscriptions expiring within 3 days
-        const threeDaysLater = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
-        const now = new Date().toISOString();
-        const { data: expiringSoon } = await supabase
-            .from('subscriptions')
-            .select('user_id, expires_at, payment_method, packages(display_name)')
-            .eq('status', 'active')
-            .gt('expires_at', now)
-            .lte('expires_at', threeDaysLater);
-
-        if (expiringSoon) {
-            for (const sub of expiringSoon) {
-                try {
-                    const { data: user } = await supabase
-                        .from('users')
-                        .select('phone, full_name, username')
-                        .eq('id', sub.user_id)
-                        .single();
-
-                    if (!user?.phone) continue;
-
-                    const daysLeft = Math.ceil((new Date(sub.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
-
-                    if (sub.payment_method === 'trial') {
-                        await notificationService.notifyTrialExpiring(
-                            user.phone,
-                            user.full_name || user.username || 'User'
-                        );
-                    } else {
-                        await notificationService.notifySubscriptionExpiringSoon(
-                            user.phone,
-                            user.full_name || user.username || 'User',
-                            sub.packages?.display_name || 'Unknown',
-                            daysLeft
-                        );
-                    }
-                } catch (e) {
-                    console.error(`❌ [Cron] Expiring-soon notification error:`, e.message);
-                }
-            }
-        }
-    } catch (err) {
-        console.error(`❌ [Cron] Subscription expiry check error:`, err.message);
-    }
-}, 60 * 60 * 1000); // Every 1 hour
-
+startPresenceJob(sessionManager);
+startProactiveAiJob(sessionManager);
+startHistoryCleanupJob();
+startSubscriptionExpiryJob();
 
 // ============================================
 // Start Server
@@ -222,34 +122,8 @@ async function startServer() {
         console.log(`${'='.repeat(50)}\n`);
     });
 
-    // Auto-restore all active sessions from database (respects NODE_ENV)
-    const dbSessions = await configService.getAllUserSessions();
-    const uniqueSessions = [...new Set(dbSessions)];
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    const singleSessions = uniqueSessions.filter(id => !UUID_REGEX.test(id) && id !== 'wa-bot-ai');
-    const multiSessions = uniqueSessions.filter(id => UUID_REGEX.test(id) || id === 'wa-bot-ai');
-
-    console.log(`📡 [Boot] Restoring ${uniqueSessions.length} sessions...`);
-
-    // 1. Single Sessions
-    for (const sessionId of singleSessions) {
-        connectionService.connect(sessionId).catch(err =>
-            console.error(`❌ Auto-start failed for ${sessionId}: ${err.message}`)
-        );
-    }
-
-    // 2. Multi Sessions
-    if (multiSessions.length > 0) {
-        console.log(`\n📡 [Boot-multi-session ${multiSessions.length}]`);
-        for (const sessionId of multiSessions) {
-            connectionService.connect(sessionId).catch(err =>
-                console.error(`❌ Auto-start failed for ${sessionId}: ${err.message}`)
-            );
-        }
-    }
+    await restoreSessions({ configService, connectionService });
 }
-
 // Graceful shutdown
 const shutdown = (signal) => {
     console.log(`\n👋 Received ${signal}, shutting down all sessions...`);
@@ -273,3 +147,12 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 startServer();
+
+
+
+
+
+
+
+
+

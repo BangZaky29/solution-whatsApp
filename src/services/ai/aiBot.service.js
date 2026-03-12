@@ -5,6 +5,13 @@ const configService = require('../common/config.service');
 const sessionManager = require('../whatsapp/session.manager');
 const supabase = require('../../config/supabase');
 const logService = require('../common/log.service');
+const { checkAndSendProactiveMessage } = require('./aiBot.proactive');
+const {
+    getMessageText,
+    getGroupTriggerInfo,
+    getMediaHandlingState,
+    parseMediaTags
+} = require('./aiBot.helpers');
 
 // Payment & Token System
 const paymentService = require('../payment/payment.service');
@@ -12,6 +19,8 @@ const notificationService = require('../payment/notification.service');
 
 // UUID detection regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PROACTIVE_SYSTEM_PROMPT_SUFFIX = "\n\nIni adalah pesan follow-up otomatis (proactive nudge). Sapa pengguna dengan ramah dan tanyakan apakah ada hal lain yang bisa dibantu, atau lanjutkan topik pembicaraan sebelumnya dengan cara yang sangat halus dan tidak memaksa.";
+const PROACTIVE_NUDGE_PROMPT = "Berikan sapaan ramah atau follow up singkat berdasarkan konteks percakapan di atas.";
 
 /**
  * AI Bot Service
@@ -52,16 +61,6 @@ class AIBotService {
         const displayName = session?.displayName || sessionId;
 
         // ── ROBUST TEXT EXTRACTION ──
-        const getMessageText = (m) => {
-            if (!m) return "";
-            return m.conversation ||
-                m.extendedTextMessage?.text ||
-                m.imageMessage?.caption ||
-                m.videoMessage?.caption ||
-                m.buttonsResponseMessage?.selectedButtonId ||
-                m.listResponseMessage?.singleSelectReply?.selectedRowId ||
-                "";
-        };
         const messageText = getMessageText(msg.message);
         const lowerText = messageText.toLowerCase();
         const mentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
@@ -77,45 +76,22 @@ class AIBotService {
 
         // ── Item #X: GROUP MENTION, REPLY & KEYWORD DETECTION ──
         if (isGroup) {
-            // Broad ContextInfo extraction (works for text and media replies)
-            const contextInfo = msg.message?.extendedTextMessage?.contextInfo ||
-                msg.message?.imageMessage?.contextInfo ||
-                msg.message?.videoMessage?.contextInfo ||
-                msg.message?.audioMessage?.contextInfo || {};
+            const { shouldProcess, triggerType, quotedParticipant } = getGroupTriggerInfo({
+                message: msg.message,
+                messageText,
+                mentions,
+                myJid,
+                myLid,
+                myNumber,
+                myLidBase,
+                displayName
+            });
 
-            const quotedParticipant = contextInfo.participant || "";
-            const quotedBase = quotedParticipant.split(':')[0].split('@')[0];
-
-            // Check if message is a reply to the bot itself (Compare base IDs to skip device suffixes)
-            const isReplyToMe = (quotedBase && (quotedBase === myNumber || (myLidBase && quotedBase === myLidBase)));
-
-            const lowerText = messageText.toLowerCase();
-
-            // Check for keywords anywhere (ai, bot, or display name)
-            const triggerWords = ['ai', 'bot'];
-            if (displayName) triggerWords.push(displayName.toLowerCase());
-            const keywordRegex = new RegExp(`\\b(${triggerWords.join('|')})\\b`, 'i');
-            const hasKeyword = keywordRegex.test(lowerText);
-
-            // Check if bot is mentioned via official mention (JID/LID), text "@number", or text "@displayName"
-            const isMentioned = mentions.includes(myJid) ||
-                (myLid && mentions.includes(myLid)) ||
-                mentions.some(m => m.includes(myNumber)) ||
-                (myLidBase && mentions.some(m => m.includes(myLidBase))) ||
-                lowerText.includes(`@${myNumber}`) ||
-                (myLidBase && lowerText.includes(`@${myLidBase}`)) ||
-                (displayName && lowerText.includes(`@${displayName.toLowerCase()}`));
-
-            if (!isMentioned && !isReplyToMe && !hasKeyword) {
+            if (!shouldProcess) {
                 return;
             }
 
-            let triggerType = 'UNKNOWN';
-            if (isMentioned) triggerType = 'MENTION';
-            else if (isReplyToMe) triggerType = 'REPLY';
-            else if (hasKeyword) triggerType = 'KEYWORD';
-
-            console.log(`📢 [AI-Bot][${displayName}] Triggered via ${triggerType} (Quoted: ${quotedParticipant || 'none'}). Proceeding.`);
+            console.log(`[AI-Bot][${displayName}] Triggered via ${triggerType} (Quoted: ${quotedParticipant || 'none'}). Proceeding.`);
         }
 
         const participantJid = msg.key.participant || remoteJid;
@@ -169,15 +145,19 @@ class AIBotService {
         // messageText is already defined above
 
         // ── Item #X: DEFENSIVE MEDIA HANDLING ──
-        const isMedia = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage'].includes(messageType);
         const saveKeywords = ['simpan', 'save', 'store', 'unggah', 'upload'];
         const confirmKeywords = ['iya', 'iyah', 'yes', 'ok', 'boleh', 'siap', 'simpan', 'save'];
         const rejectKeywords = ['tidak', 'gak', 'nggak', 'no', 'batal', 'cancel', 'gausah'];
 
-        const hasSaveIntent = isMedia && saveKeywords.some(kw => lowerText.includes(kw));
         const hasPending = this.pendingMedia.has(remoteJid);
-        const isConfirming = !isMedia && hasPending && confirmKeywords.some(kw => lowerText.includes(kw));
-        const isRejecting = !isMedia && hasPending && rejectKeywords.some(kw => lowerText.includes(kw));
+        const { isMedia, hasSaveIntent, isConfirming, isRejecting } = getMediaHandlingState({
+            messageType,
+            lowerText,
+            hasPending,
+            saveKeywords,
+            confirmKeywords,
+            rejectKeywords
+        });
 
         let mediaRecord = null;
 
@@ -327,16 +307,7 @@ class AIBotService {
             logService.success(userId, sessionId, `AI Response generated in ${latency}ms`);
 
             // --- NEW: AI MEDIA RESPONSE PARSING ---
-            const imageMatch = aiResponse.match(/\[SEND_IMAGE:\s*(https?:\/\/[^\]]+)\]/);
-            const videoMatch = aiResponse.match(/\[SEND_VIDEO:\s*(https?:\/\/[^\]]+)\]/);
-            const audioMatch = aiResponse.match(/\[SEND_AUDIO:\s*(https?:\/\/[^\]]+)\]/);
-
-            // Clean response for textual part
-            const cleanResponse = aiResponse
-                .replace(/\[SEND_IMAGE:[^\]]+\]/g, '')
-                .replace(/\[SEND_VIDEO:[^\]]+\]/g, '')
-                .replace(/\[SEND_AUDIO:[^\]]+\]/g, '')
-                .trim();
+            const { cleanResponse, imageUrl, videoUrl, audioUrl } = parseMediaTags(aiResponse);
 
             // NEW: Implement response delay
             if (controls.response_delay_mins > 0) {
@@ -351,15 +322,15 @@ class AIBotService {
             }
 
             // Send actual media if parsed
-            if (imageMatch) {
-                console.log(`📤 [AI-Bot][${displayName}] AI sending IMAGE: ${imageMatch[1]}`);
-                await socket.sendMessage(remoteJid, { image: { url: imageMatch[1] }, caption: "Ini kak fotonya... 😉" });
-            } else if (videoMatch) {
-                console.log(`📤 [AI-Bot][${displayName}] AI sending VIDEO: ${videoMatch[1]}`);
-                await socket.sendMessage(remoteJid, { video: { url: videoMatch[1] } });
-            } else if (audioMatch) {
-                console.log(`📤 [AI-Bot][${displayName}] AI sending AUDIO: ${audioMatch[1]}`);
-                await socket.sendMessage(remoteJid, { audio: { url: audioMatch[1] }, mimetype: 'audio/mp4', ptt: true });
+            if (imageUrl) {
+                console.log(`📤 [AI-Bot][${displayName}] AI sending IMAGE: ${imageUrl}`);
+                await socket.sendMessage(remoteJid, { image: { url: imageUrl }, caption: "Ini kak fotonya... 😉" });
+            } else if (videoUrl) {
+                console.log(`📤 [AI-Bot][${displayName}] AI sending VIDEO: ${videoUrl}`);
+                await socket.sendMessage(remoteJid, { video: { url: videoUrl } });
+            } else if (audioUrl) {
+                console.log(`📤 [AI-Bot][${displayName}] AI sending AUDIO: ${audioUrl}`);
+                await socket.sendMessage(remoteJid, { audio: { url: audioUrl }, mimetype: 'audio/mp4', ptt: true });
             }
 
             await configService.incrementStat('responses', userId);
@@ -400,88 +371,21 @@ class AIBotService {
         }
     }
 
+
     async checkAndSendProactiveMessage(sessionId, socket) {
-        const userId = UUID_REGEX.test(sessionId) ? sessionId : null;
-        if (!userId) return;
-
-        try {
-            const controls = await configService.getAIControls(userId);
-            if (!controls.is_proactive_enabled) return;
-
-            // Check subscription supports proactive & has tokens
-            const features = await paymentService.getUserFeatures(userId);
-            if (!features.has_subscription || !features.proactive_enabled) return;
-            const hasTokens = await paymentService.hasEnoughTokens(userId, 5);
-            if (!hasTokens) return;
-
-            const displayName = await configService.getUserDisplay(userId);
-
-            // Get all chats for this user to find candidates
-            const chats = await historyService.getAllChatStats(userId);
-            const now = new Date();
-            let nudgeCount = 0;
-
-            for (const chat of chats) {
-                // Item #6: Max 3 nudges per cycle
-                if (nudgeCount >= 3) {
-                    console.log(`🛑 [AI-Bot][${displayName}] Nudge limit reached (3). Stopping.`);
-                    break;
-                }
-
-                const lastActive = new Date(chat.last_active);
-                const diffMins = (now - lastActive) / (1000 * 60);
-
-                // If last message was from user and it's been more than 60 mins but less than 24h
-                if (diffMins > 60 && diffMins < 1440) {
-                    const history = await historyService.getHistory(chat.jid, userId);
-                    if (history.length > 0 && history[history.length - 1].role === 'user') {
-                        // Item #6: Re-check token balance before each nudge
-                        const hasTokensNow = await paymentService.hasEnoughTokens(userId, 5);
-                        if (!hasTokensNow) {
-                            console.log(`🎫 [AI-Bot][${displayName}] Insufficient tokens for nudge. Stopping.`);
-                            break;
-                        }
-
-                        console.log(`🤖 [AI-Bot][${displayName}] Sending proactive nudge to ${chat.jid}...`);
-
-                        const systemPrompt = await configService.getSystemPrompt(userId) +
-                            "\n\nIni adalah pesan follow-up otomatis (proactive nudge). Sapa pengguna dengan ramah dan tanyakan apakah ada hal lain yang bisa dibantu, atau lanjutkan topik pembicaraan sebelumnya dengan cara yang sangat halus dan tidak memaksa.";
-
-                        const formattedHistory = historyService.formatForPrompt(history);
-                        const activeKeyConfig = await configService.getGeminiApiKey(userId);
-
-                        // Only if we have an API Key
-                        if (!activeKeyConfig.key) continue;
-
-                        const aiResponse = await geminiService.generateResponse(
-                            "Berikan sapaan ramah atau follow up singkat berdasarkan konteks percakapan di atas.",
-                            formattedHistory,
-                            systemPrompt,
-                            {
-                                apiKey: activeKeyConfig.key,
-                                modelName: activeKeyConfig.model
-                            }
-                        );
-
-                        await socket.sendMessage(chat.jid, { text: aiResponse });
-
-                        // Deduct 5 tokens for proactive nudge
-                        await paymentService.deductTokens(userId, 5, 'proactive_nudge', chat.jid);
-                        nudgeCount++;
-
-                        // Save as proactive message
-                        await historyService.saveMessage(chat.jid, chat.push_name, {
-                            role: 'model',
-                            content: aiResponse,
-                            isProactive: true
-                        }, userId);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error(`❌ [AI-Bot][Proactive] Error for ${sessionId}:`, error.message);
-        }
+        return checkAndSendProactiveMessage({
+            sessionId,
+            socket,
+            UUID_REGEX,
+            configService,
+            paymentService,
+            historyService,
+            geminiService,
+            systemPromptSuffix: PROACTIVE_SYSTEM_PROMPT_SUFFIX,
+            nudgePrompt: PROACTIVE_NUDGE_PROMPT
+        });
     }
+
 }
 
 module.exports = new AIBotService();
