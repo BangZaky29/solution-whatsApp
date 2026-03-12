@@ -19,12 +19,19 @@ async function isContactAllowed(jid, userId = null) {
         .from(this.contactsTable)
         .select('jid, is_allowed')
         .eq('user_id', userId)
-        .eq('is_allowed', true);
+        .eq('is_allowed', true)
+        .order('created_at', { ascending: true });
 
     if (error || !data) return false;
 
+    const paymentService = require('../../payment/payment.service');
+    const features = await paymentService.getUserFeatures(userId);
+    const maxContacts = features ? (features.max_contacts || 0) : 0;
+    
+    const activeContacts = data.slice(0, maxContacts);
+
     const isTargetGroup = jid.endsWith('@g.us');
-    return data.some(contact => {
+    return activeContacts.some(contact => {
         const dbId = contact.jid.split('@')[0];
         const isMatch = contact.jid === jid || (!isTargetGroup && dbId === incomingId);
         return isMatch;
@@ -37,7 +44,8 @@ async function getAllowedContacts(userId = null) {
         .from(this.contactsTable)
         .select('*')
         .eq('user_id', userId)
-        .eq('is_allowed', true);
+        .eq('is_allowed', true)
+        .order('created_at', { ascending: true });
     return data || [];
 }
 

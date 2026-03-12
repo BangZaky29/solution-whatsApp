@@ -32,7 +32,7 @@ const addContact = async (req, res) => {
 
         // Item #2: Feature limit check  max_contacts
         const features = await paymentService.getUserFeatures(userId);
-        if (features.has_subscription && features.max_contacts < 999) {
+        if (features.max_contacts < 999) {
             const { count } = await supabase
                 .from(configService.contactsTable)
                 .select('*', { count: 'exact', head: true })
