@@ -1,4 +1,5 @@
-﻿const supabase = require("../../../config/supabase");
+const supabase = require("../../../config/supabase");
+const featuresService = require("../../payment/features.service");
 
 async function getUserDisplay(userId) {
   try {
@@ -25,27 +26,7 @@ async function getUserDisplay(userId) {
 }
 
 async function getAIControls(userId = null) {
-  if (!userId || userId === "null")
-    return {
-      is_ai_enabled: false,
-      is_proactive_enabled: false,
-      response_delay_mins: 0,
-      media_receive_enabled: false,
-      media_save_to_cloud: false,
-      media_send_enabled: false,
-      media_confirm_before_save: true,
-      group_chat_enabled: false,
-      group_trigger_mention: true,
-      group_trigger_reply: true,
-      group_trigger_keyword: false,
-      history_enabled: true,
-      history_max_messages: 10,
-      proactive_idle_threshold_mins: 60,
-      proactive_max_per_cycle: 3,
-    };
-  const key = `ai_controls:${userId}`;
-  const settings = await this.getSetting(key);
-  return {
+  const defaultControls = {
     is_ai_enabled: true,
     is_proactive_enabled: false,
     response_delay_mins: 0,
@@ -61,8 +42,41 @@ async function getAIControls(userId = null) {
     history_max_messages: 10,
     proactive_idle_threshold_mins: 60,
     proactive_max_per_cycle: 3,
-    ...(settings || {}),
   };
+
+  if (!userId || userId === "null") return defaultControls;
+
+  try {
+    const key = `ai_controls:${userId}`;
+    const settings = await this.getSetting(key);
+    const userFeatures = await featuresService.getUserFeatures(userId);
+
+    const merged = {
+      ...defaultControls,
+      ...(settings || {}),
+    };
+
+    // Strict enforcement: Force features to false if not allowed by plan
+    if (!userFeatures.proactive_enabled) {
+      merged.is_proactive_enabled = false;
+    }
+    if (!userFeatures.media_save_enabled) {
+      merged.media_save_to_cloud = false;
+    }
+    if (!userFeatures.media_send_enabled) {
+      merged.media_send_enabled = false;
+    }
+    if (!userFeatures.group_chat_enabled) {
+      merged.group_chat_enabled = false;
+    }
+    if (!userFeatures.group_keyword_trigger) {
+      merged.group_trigger_keyword = false;
+    }
+
+    return merged;
+  } catch (err) {
+    return defaultControls;
+  }
 }
 
 async function updateAIControls(userId, controls) {
