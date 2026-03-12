@@ -27,7 +27,7 @@ class GeminiService {
 
             const finalSystemPrompt = customPrompt || "Anda adalah asisten AI ramah.";
 
-            // â”€â”€ MULTIMODAL SUPPORT â”€â”€
+            // ── MULTIMODAL SUPPORT ──
             const parts = [
                 { text: `Instruction: ${finalSystemPrompt}` },
                 { text: history ? `Context History: ${history}` : "" },

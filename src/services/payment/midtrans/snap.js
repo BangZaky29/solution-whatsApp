@@ -35,7 +35,7 @@
             throw new Error(data.error_messages?.join(', ') || 'Midtrans API error');
         }
 
-        console.log(`âœ… [MidtransService] Snap token created for order: ${payload.transaction_details.order_id}`);
+        console.log(`✅ [MidtransService] Snap token created for order: ${payload.transaction_details.order_id}`);
         return {
             token: data.token,
             redirect_url: data.redirect_url,

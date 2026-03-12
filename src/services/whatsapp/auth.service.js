@@ -76,7 +76,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
 
             if (error) throw error;
         } catch (err) {
-            console.error(`âš ï¸ [${sessionId}] Exception writing ${key}:`, err.message);
+            console.error(`⚠️ [${sessionId}] Exception writing ${key}:`, err.message);
         }
     };
 
@@ -106,7 +106,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
             });
             return results;
         } catch (err) {
-            console.error(`âš ï¸ [${sessionId}] Batch read error for ${type}:`, err.message);
+            console.error(`⚠️ [${sessionId}] Batch read error for ${type}:`, err.message);
             return {};
         }
     };
@@ -115,7 +115,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         try {
             await supabase.from(TABLE_NAME).delete().eq('id', getKey(type, id));
         } catch (err) {
-            console.error(`âš ï¸ [${sessionId}] Error removing ${type}:${id}:`, err.message);
+            console.error(`⚠️ [${sessionId}] Error removing ${type}:${id}:`, err.message);
         }
     };
 

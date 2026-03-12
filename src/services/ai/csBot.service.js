@@ -1,4 +1,4 @@
-﻿const configService = require('../common/config.service');
+const configService = require('../common/config.service');
 const whatsappService = require('../whatsapp/whatsapp.service');
 
 /**
@@ -8,12 +8,12 @@ const whatsappService = require('../whatsapp/whatsapp.service');
 class CSBotService {
     constructor() {
         this.sessionId = 'CS-BOT';
-        console.log(`ðŸ¢ [CS-Bot] Service locked to session: ${this.sessionId}`);
+        console.log(`✨ [CS-Bot] Service locked to session: ${this.sessionId}`);
     }
 
     async handleIncomingMessage(sessionId, socket, msg) {
         if (sessionId !== this.sessionId) {
-            console.log(`âš ï¸ [CS-Bot] Received message for WRONG session: ${sessionId}. Expected: ${this.sessionId}`);
+            console.log(`⚠️ [CS-Bot] Received message for WRONG session: ${sessionId}. Expected: ${this.sessionId}`);
             return;
         }
 
@@ -24,7 +24,7 @@ class CSBotService {
         if (!messageText) return;
 
         const senderId = remoteJid.split('@')[0];
-        console.log(`ðŸ¢ [CS-Bot] Read-only log for ${senderId}: "${messageText}"`);
+        console.log(`✨ [CS-Bot] Read-only log for ${senderId}: "${messageText}"`);
 
         // Auto-replies and proactive messaging disabled as per user request.
         // The bot will only log incoming messages without responding.
@@ -36,7 +36,7 @@ class CSBotService {
 
         if (!session || !session.socket || session.connectionState.connection !== 'open') {
             const status = session?.connectionState?.connection || 'NOT_FOUND';
-            console.warn(`âš ï¸ [CS-Bot] Cannot send OTP: Session is ${status}`);
+            console.warn(`⚠️ [CS-Bot] Cannot send OTP: Session is ${status}`);
             return {
                 success: false,
                 error: `CS-BOT session is ${status}. Please ensure the bot is connected.`
@@ -46,12 +46,12 @@ class CSBotService {
         const remoteJid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
         const sender = phone.split('@')[0];
 
-        console.log(`\n[OTP-Service]:\nðŸš€ Sending OTP to ${sender}...`);
+        console.log(`\n[OTP-Service]:\n🚀 Sending OTP to ${sender}...`);
 
         const result = await whatsappService.sendTextMessage(session.socket, remoteJid, message);
 
         if (result.success) {
-            console.log(`âœ… [OTP-Service] Success! OTP sent to ${sender}`);
+            console.log(`✅ [OTP-Service] Success! OTP sent to ${sender}`);
         } else {
             console.error(`âŒ [OTP-Service] Failed to send to ${sender}: ${result.error}`);
         }

@@ -90,10 +90,10 @@ class MediaService {
                 .insert(mediaRecord);
 
             if (dbError) {
-                console.warn('âš ï¸ [MediaService] Failed to save media record to DB:', dbError.message);
+                console.warn('⚠️ [MediaService] Failed to save media record to DB:', dbError.message);
             }
 
-            console.log(`âœ… [MediaService] Media processed: ${publicUrl}`);
+            console.log(`✅ [MediaService] Media processed: ${publicUrl}`);
             return {
                 ...mediaRecord,
                 buffer,

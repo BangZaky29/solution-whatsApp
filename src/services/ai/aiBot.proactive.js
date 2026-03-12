@@ -57,7 +57,7 @@
           }
 
           console.log(
-            `ðŸ¤– [AI-Bot][${displayName}] Sending proactive nudge to ${chat.jid}...`,
+            `🤖 [AI-Bot][${displayName}] Sending proactive nudge to ${chat.jid}...`,
           );
 
           const systemPrompt =

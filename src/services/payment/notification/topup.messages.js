@@ -1,6 +1,6 @@
 ﻿function buildTopupSuccessMessage(userName, tokenAmount, newBalance) {
     return [
-        `âœ… *TOP-UP TOKEN BERHASIL!*`,
+        `✅ *TOP-UP TOKEN BERHASIL!*`,
         ``,
         `Halo ${userName},`,
         `Top-up token Anda telah berhasil.`,

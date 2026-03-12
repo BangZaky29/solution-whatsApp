@@ -1,6 +1,6 @@
 ﻿function buildTokenLowMessage(userName, balance) {
     return [
-        `âš ï¸ *PERINGATAN: TOKEN HAMPIR HABIS*`,
+        `⚠️ *PERINGATAN: TOKEN HAMPIR HABIS*`,
         ``,
         `Halo ${userName},`,
         `Sisa token Anda tinggal *${balance} token*.`,
@@ -35,7 +35,7 @@ function buildSubscriptionExpiredMessage(userName, packageName) {
 
 function buildSubscriptionExpiringSoonMessage(userName, packageName, daysLeft) {
     return [
-        `ðŸ“¢ *LANGGANAN SEGERA BERAKHIR*`,
+        `📢 *LANGGANAN SEGERA BERAKHIR*`,
         ``,
         `Halo ${userName},`,
         `Paket *${packageName}* Anda akan berakhir dalam *${daysLeft} hari*.`,

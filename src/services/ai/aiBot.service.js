@@ -32,7 +32,7 @@ class AIBotService {
   constructor() {
     this.config = { systemPrompt: "" };
     this.pendingMedia = new Map(); // Store { remoteJid: msg }
-    console.log(`ðŸ¤– [AI-Bot] Service initialized for multi-user mode`);
+    console.log(`🤖 [AI-Bot] Service initialized for multi-user mode`);
   }
 
   async init() {
@@ -61,7 +61,7 @@ class AIBotService {
 
     if (!userId && sessionId !== "wa-bot-ai") return;
 
-    // â”€â”€ LOAD CONTROLS EARLY (feature gating) â”€â”€
+    // ── LOAD CONTROLS EARLY (feature gating) ──
     const controls = await configService.getAIControls(userId);
 
     const isGroup = remoteJid.endsWith("@g.us");
@@ -72,24 +72,24 @@ class AIBotService {
     const myLidBase = myLid ? myLid.split(":")[0].split("@")[0] : "";
     const displayName = session?.displayName || sessionId;
 
-    // â”€â”€ FEATURE FLAG: GROUP CHAT â”€â”€
+    // ── FEATURE FLAG: GROUP CHAT ──
     if (isGroup && !controls.group_chat_enabled) {
       console.log(
-        `ðŸš« [AI-Bot][${displayName}] Group chat DISABLED for this user. Skipping.`,
+        `✨[AI-Bot][${displayName}] Group chat DISABLED for this user. Skipping.`,
       );
       return;
     }
 
-    // â”€â”€ ROBUST TEXT EXTRACTION â”€â”€
+    // ── ROBUST TEXT EXTRACTION ──
     const messageText = getMessageText(msg.message);
     const lowerText = messageText.toLowerCase();
     const mentions =
       msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
-    // â”€â”€ TOP-LEVEL LOGGING â”€â”€
+    // ── TOP-LEVEL LOGGING ──
     if (isGroup) {
       console.log(
-        `ðŸ“© [AI-Bot][${displayName}] Incoming group message: ${remoteJid}`,
+        ` ✨[AI-Bot][${displayName}] Incoming group message: ${remoteJid}`,
       );
       console.log(`   - Sender: ${msg.key.participant || "unknown"}`);
       console.log(`   - MyBaseJid: ${myJid} | MyLid: ${myLid}`);
@@ -97,7 +97,7 @@ class AIBotService {
       console.log(`   - Raw Text: "${messageText}"`);
     }
 
-    // â”€â”€ Item #X: GROUP MENTION, REPLY & KEYWORD DETECTION â”€â”€
+    // ── Item #X: GROUP MENTION, REPLY & KEYWORD DETECTION ──
     if (isGroup) {
       const { shouldProcess, triggerType, quotedParticipant } =
         getGroupTriggerInfo({
@@ -135,7 +135,7 @@ class AIBotService {
       if (isGroup) {
         try {
           console.log(
-            `ðŸ” [AI-Bot][${displayName}] Attempting to resolve group name for ${remoteJid}`,
+            `🔐 [AI-Bot][${displayName}] Attempting to resolve group name for ${remoteJid}`,
           );
           // Race against 5s timeout to prevent hanging the AI pipeline
           const metadata = await Promise.race([
@@ -149,11 +149,11 @@ class AIBotService {
           ]);
           logName = metadata.subject || logName;
           console.log(
-            `ðŸ“¦ [AI-Bot][${displayName}] Resolved group name: ${logName}`,
+            `✨ [AI-Bot][${displayName}] Resolved group name: ${logName}`,
           );
         } catch (e) {
           console.warn(
-            `âš ï¸ [AI-Bot][${displayName}] Metadata fetch failed: ${e.message}`,
+            `⚠️ [AI-Bot][${displayName}] Metadata fetch failed: ${e.message}`,
           );
           // Fallback to pushName which is already set
         }
@@ -161,7 +161,7 @@ class AIBotService {
 
       await configService.logBlockedAttempt(remoteJid, logName, userId);
       console.log(
-        `ðŸš« [AI-Bot][${displayName}] Target ${isGroup ? "Group" : "Sender"} "${logName}" NOT whitelisted. Logged to blocklist.`,
+        `✨ [AI-Bot][${displayName}] Target ${isGroup ? "Group" : "Sender"} "${logName}" NOT whitelisted. Logged to blocklist.`,
       );
       logService.warn(
         userId,
@@ -171,7 +171,7 @@ class AIBotService {
       return;
     }
 
-    // â”€â”€ Item #9: SKIP SYSTEM MESSAGES (CS-BOT & MAIN-SESSION) â”€â”€
+    // ── Item #9: SKIP SYSTEM MESSAGES (CS-BOT & MAIN-SESSION) ──
     // Skip messages from system sessions to avoid AI responding to notifications
     const systemSessions = ["CS-BOT", process.env.SESSION_ID || "main-session"];
     for (const sysId of systemSessions) {
@@ -184,7 +184,7 @@ class AIBotService {
             : null;
           if (sysNumber && cleanSender === sysNumber) {
             console.log(
-              `ðŸ¤– [AI-Bot][${displayName}] Skipping system message from ${sysId} (${cleanSender}).`,
+              `🤖 [AI-Bot][${displayName}] Skipping system message from ${sysId} (${cleanSender}).`,
             );
             logService.system(
               userId,
@@ -193,14 +193,14 @@ class AIBotService {
             );
             return;
           }
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
     const messageType = msg.message ? Object.keys(msg.message)[0] : null;
     // messageText is already defined above
 
-    // â”€â”€ Item #X: DEFENSIVE MEDIA HANDLING â”€â”€
+    // ── Item #X: DEFENSIVE MEDIA HANDLING ──
     const saveKeywords = ["simpan", "save", "store", "unggah", "upload"];
     const confirmKeywords = [
       "iya",
@@ -233,7 +233,7 @@ class AIBotService {
         rejectKeywords,
       });
 
-    // â”€â”€ FEATURE FLAG: MEDIA RECEIVE â”€â”€
+    // ── FEATURE FLAG: MEDIA RECEIVE ──
     if (isMedia && !controls.media_receive_enabled) {
       console.log(
         `ðŸ“µ [AI-Bot][${displayName}] Media receive DISABLED. Skipping media.`,
@@ -248,7 +248,7 @@ class AIBotService {
       if (hasSaveIntent) {
         if (controls.media_save_to_cloud) {
           console.log(
-            `ðŸ“¸ [AI-Bot][${displayName}] Media detected WITH save intent. Processing...`,
+            `✨ [AI-Bot][${displayName}] Media detected WITH save intent. Processing...`,
           );
           const mediaService = require("../whatsapp/media.service");
           mediaRecord = await mediaService.processIncomingMedia(msg, userId);
@@ -257,11 +257,11 @@ class AIBotService {
               remoteJid,
               {
                 text:
-                  `âœ… *Media Berhasil Disimpan*\\n\\n` +
-                  `ðŸ“ *Nama:* ${mediaRecord.file_name}\\n` +
-                  `ðŸ“ *Tipe:* ${mediaRecord.file_type}\\n` +
-                  `ðŸ“¡ *Status:* Tersimpan di Cloud (Supabase)\\n` +
-                  `ðŸ”— *URL:* ${mediaRecord.public_url}`,
+                  `✅ *Media Berhasil Disimpan*\\n\\n` +
+                  `✨ *Nama:* ${mediaRecord.file_name}\\n` +
+                  `✨ *Tipe:* ${mediaRecord.file_type}\\n` +
+                  `✨ *Status:* Tersimpan di Cloud (Supabase)\\n` +
+                  `🔐 *URL:* ${mediaRecord.public_url}`,
               },
               { quoted: msg },
             );
@@ -270,32 +270,32 @@ class AIBotService {
           await socket.sendMessage(
             remoteJid,
             {
-              text: `âŒ *Penyimpanan Media Dinonaktifkan*\\n\\nFitur simpan media ke cloud belum diaktifkan. Aktifkan di dashboard Features.`,
+              text: `✨ *Penyimpanan Media Dinonaktifkan*\\n\\nFitur simpan media ke cloud belum diaktifkan. Aktifkan di dashboard Features.`,
             },
             { quoted: msg },
           );
         }
       } else if (controls.media_confirm_before_save) {
         console.log(
-          `ðŸ“¸ [AI-Bot][${displayName}] Media detected WITHOUT intent. Caching for confirmation.`,
+          `✨ [AI-Bot][${displayName}] Media detected WITHOUT intent. Caching for confirmation.`,
         );
         this.pendingMedia.set(remoteJid, msg);
         await socket.sendMessage(
           remoteJid,
           {
-            text: `ðŸ“¸ *Media Terdeteksi*\n\nbro lu ngirim ${messageType.replace("Message", "")} mau disimpan gak?`,
+            text: `✨ *Media Terdeteksi*\n\nbro lu ngirim ${messageType.replace("Message", "")} mau disimpan gak?`,
           },
           { quoted: msg },
         );
         return; // Wait for confirmation
       } else {
         console.log(
-          `ðŸ“¸ [AI-Bot][${displayName}] Media detected WITHOUT intent. Confirmation disabled, skipping cache.`,
+          `✨ [AI-Bot][${displayName}] Media detected WITHOUT intent. Confirmation disabled, skipping cache.`,
         );
       }
     } else if (isConfirming) {
       console.log(
-        `ðŸ‘ [AI-Bot][${displayName}] User confirmed media storage. Processing cached media...`,
+        `✨ [AI-Bot][${displayName}] User confirmed media storage. Processing cached media...`,
       );
       const cachedMsg = this.pendingMedia.get(remoteJid);
       const mediaService = require("../whatsapp/media.service");
@@ -306,11 +306,11 @@ class AIBotService {
           remoteJid,
           {
             text:
-              `âœ… *Media Berhasil Disimpan*\n\n` +
-              `ðŸ“ *Nama:* ${mediaRecord.file_name}\n` +
-              `ðŸ“ *Tipe:* ${mediaRecord.file_type}\n` +
-              `ðŸ“¡ *Status:* Tersimpan di Cloud (Supabase)\n` +
-              `ðŸ”— *URL:* ${mediaRecord.public_url}`,
+              `✅ *Media Berhasil Disimpan*\n\n` +
+              `✨ *Nama:* ${mediaRecord.file_name}\n` +
+              `✨ *Tipe:* ${mediaRecord.file_type}\n` +
+              `✨ *Status:* Tersimpan di Cloud (Supabase)\n` +
+              `🔐— *URL:* ${mediaRecord.public_url}`,
           },
           { quoted: msg },
         );
@@ -334,7 +334,7 @@ class AIBotService {
 
     // NEW: Check for AI enabled and delay
     if (!controls.is_ai_enabled) {
-      console.log(`ðŸ”‡ [AI-Bot][${displayName}] AI is DISABLED for this user.`);
+      console.log(`🔐‡ [AI-Bot][${displayName}] AI is DISABLED for this user.`);
       logService.warn(
         userId,
         sessionId,
@@ -343,12 +343,12 @@ class AIBotService {
       return;
     }
 
-    // â”€â”€ TOKEN ENFORCEMENT â”€â”€
+    // ── TOKEN ENFORCEMENT ──
     if (userId && UUID_REGEX.test(userId)) {
       const subscription = await paymentService.getActiveSubscription(userId);
       if (!subscription) {
         console.log(
-          `ðŸ’³ [AI-Bot][${displayName}] No active subscription. Blocking.`,
+          `💳 [AI-Bot][${displayName}] No active subscription. Blocking.`,
         );
         logService.error(
           userId,
@@ -356,7 +356,7 @@ class AIBotService {
           `No active subscription found. Blocked AI response.`,
         );
         await socket.sendMessage(remoteJid, {
-          text: "âš ï¸ Langganan Anda tidak aktif. Silakan berlangganan di dashboard WA-BOT-AI untuk menggunakan fitur AI.",
+          text: "⚠️ Langganan Anda tidak aktif. Silakan berlangganan di dashboard WA-BOT-AI untuk menggunakan fitur AI.",
         });
         return;
       }
@@ -364,7 +364,7 @@ class AIBotService {
       const hasTokens = await paymentService.hasEnoughTokens(userId, 10);
       if (!hasTokens) {
         console.log(
-          `ðŸŽ« [AI-Bot][${displayName}] Insufficient tokens. Blocking.`,
+          `✨ [AI-Bot][${displayName}] Insufficient tokens. Blocking.`,
         );
         logService.error(
           userId,
@@ -372,7 +372,7 @@ class AIBotService {
           `Insufficient tokens (Requires 10). Blocked AI response.`,
         );
         await socket.sendMessage(remoteJid, {
-          text: "âš ï¸ Token Anda habis. Silakan top-up token di dashboard WA-BOT-AI.",
+          text: "⚠️ Token Anda habis. Silakan top-up token di dashboard WA-BOT-AI.",
         });
         // Notify via CS-BOT
         const { data: user } = await supabase
@@ -395,7 +395,7 @@ class AIBotService {
       try {
         const metadata = await socket.groupMetadata(remoteJid);
         pushName = metadata.subject || pushName;
-      } catch (e) {}
+      } catch (e) { }
     }
     const quotedMsg =
       msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
@@ -408,7 +408,7 @@ class AIBotService {
     }
 
     console.log(
-      `ðŸ¤– [AI-Bot][${displayName}] Message from ${cleanSender}: "${fullMessageText}"`,
+      `🤖 [AI-Bot][${displayName}] Message from ${cleanSender}: "${fullMessageText}"`,
     );
     logService.info(
       userId,
@@ -465,7 +465,7 @@ class AIBotService {
     try {
       const activeKeyConfig = await configService.getGeminiApiKey(userId);
       console.log(
-        `ðŸ¤– [AI-Bot][${displayName}] Using API Key model: ${activeKeyConfig.model} (Custom: ${!!activeKeyConfig.key && activeKeyConfig.key !== process.env.GEMINI_API_KEY})`,
+        `🤖 [AI-Bot][${displayName}] Using API Key model: ${activeKeyConfig.model} (Custom: ${!!activeKeyConfig.key && activeKeyConfig.key !== process.env.GEMINI_API_KEY})`,
       );
       logService.system(
         userId,
@@ -485,9 +485,9 @@ class AIBotService {
           media:
             mediaRecord && mediaRecord.buffer
               ? {
-                  buffer: mediaRecord.buffer,
-                  mimetype: mediaRecord.mimetype,
-                }
+                buffer: mediaRecord.buffer,
+                mimetype: mediaRecord.mimetype,
+              }
               : null,
         },
       );
@@ -581,7 +581,7 @@ class AIBotService {
 
       await configService.incrementStat("responses", userId);
 
-      // â”€â”€ DEDUCT TOKENS â”€â”€
+      // ── DEDUCT TOKENS ──
       if (userId && UUID_REGEX.test(userId)) {
         const deductResult = await paymentService.deductTokens(
           userId,

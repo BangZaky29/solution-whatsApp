@@ -22,7 +22,7 @@ class ConnectionService {
     async connect(sessionId = 'main-session', userId = null, phoneNumber = null) {
         // Guard: Prevent multiple simultaneous connection attempts for the same sessionId
         if (connectionLock.get(sessionId)) {
-            console.log(`â„¹ï¸ [${sessionId}] Connection attempt already in progress. skipping.`);
+            console.log(`ℹ️ [${sessionId}] Connection attempt already in progress. skipping.`);
             return;
         }
 
@@ -32,7 +32,7 @@ class ConnectionService {
 
             if (existingSession) {
                 if (existingSession.connectionState.connection === 'open') {
-                    console.log(`â„¹ï¸ [${sessionId}] Already connected. skipping.`);
+                    console.log(`ℹ️ [${sessionId}] Already connected. skipping.`);
                     connectionLock.delete(sessionId);
                     return;
                 }
@@ -55,13 +55,13 @@ class ConnectionService {
                 const cleanRequestPhone = phoneNumber.replace(/\D/g, '');
                 const conflict = sessionManager.getSessionByPhone(cleanRequestPhone);
                 if (conflict && conflict.id !== sessionId) {
-                    console.log(`âš ï¸  [${displayName}] Conflict Detected: Phone ${cleanRequestPhone} is already active on session [${conflict.displayName}] (${conflict.id}). Skipping connection to prevent flapping.`);
+                    console.log(`⚠️  [${displayName}] Conflict Detected: Phone ${cleanRequestPhone} is already active on session [${conflict.displayName}] (${conflict.id}). Skipping connection to prevent flapping.`);
                     connectionLock.delete(sessionId);
                     return;
                 }
             }
 
-            console.log(`\nðŸš€ [${displayName}] Connecting to WhatsApp...`);
+            console.log(`\n🚀 [${displayName}] Connecting to WhatsApp...`);
 
             // Initialize or reset session data
             const sessionData = {
@@ -116,7 +116,7 @@ class ConnectionService {
                         try {
                             const code = await socket.requestPairingCode(cleanNumber);
                             sessionData.connectionState.pairingCode = code;
-                            console.log(`ðŸ”‘ [${displayName}] Pairing Code Generated: ${code}`);
+                            console.log(`🔐‘ [${displayName}] Pairing Code Generated: ${code}`);
                         } catch (err) {
                             console.error(`âŒ [${displayName}] Failed to generate pairing code:`, err.message);
                         }

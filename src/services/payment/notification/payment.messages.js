@@ -1,6 +1,6 @@
 ﻿function buildPaymentPendingMessage(userName, packageName, orderId) {
     return [
-        `ðŸ’³ *PEMBAYARAN MENUNGGU*`,
+        `💳 *PEMBAYARAN MENUNGGU*`,
         ``,
         `Halo ${userName},`,
         `Pesanan Anda sedang menunggu pembayaran.`,
@@ -19,7 +19,7 @@ function buildPaymentSuccessMessage(userName, packageName, tokenAmount, expiresA
     });
 
     return [
-        `âœ… *PEMBAYARAN BERHASIL!*`,
+        `✅ *PEMBAYARAN BERHASIL!*`,
         ``,
         `Halo ${userName},`,
         `Pembayaran Anda telah berhasil diproses.`,
@@ -28,7 +28,7 @@ function buildPaymentSuccessMessage(userName, packageName, tokenAmount, expiresA
         `ðŸŽ« Token: *${tokenAmount.toLocaleString()} token*`,
         `ðŸ“… Berlaku hingga: *${expDate}*`,
         ``,
-        `Selamat menggunakan WA-BOT-AI! ðŸ¤–âœ¨`,
+        `Selamat menggunakan WA-BOT-AI! 🤖âœ¨`,
     ].join('\n');
 }
 

@@ -7,7 +7,7 @@
         ``,
         `Berlangganan sekarang untuk terus menggunakan WA-BOT-AI:`,
         `ðŸŸ¢ Basic â€” Rp 49.000/bln`,
-        `ðŸ”µ Premium â€” Rp 99.000/bln`,
+        `🔐µ Premium â€” Rp 99.000/bln`,
         `ðŸŸ£ Pro â€” Rp 199.000/bln`,
         ``,
         `Buka dashboard â†’ Billing untuk berlangganan.`,
