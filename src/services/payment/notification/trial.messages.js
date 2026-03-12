@@ -1,16 +1,16 @@
-function buildTrialExpiringMessage(userName) {
+﻿function buildTrialExpiringMessage(userName) {
     return [
-        `⏳ *TRIAL HAMPIR BERAKHIR*`,
+        `â³ *TRIAL HAMPIR BERAKHIR*`,
         ``,
         `Halo ${userName},`,
         `Trial gratis 3 hari Anda akan segera berakhir.`,
         ``,
         `Berlangganan sekarang untuk terus menggunakan WA-BOT-AI:`,
-        `🟢 Basic — Rp 49.000/bln`,
-        `🔵 Premium — Rp 99.000/bln`,
-        `🟣 Pro — Rp 199.000/bln`,
+        `ðŸŸ¢ Basic â€” Rp 49.000/bln`,
+        `ðŸ”µ Premium â€” Rp 99.000/bln`,
+        `ðŸŸ£ Pro â€” Rp 199.000/bln`,
         ``,
-        `Buka dashboard → Billing untuk berlangganan.`,
+        `Buka dashboard â†’ Billing untuk berlangganan.`,
     ].join('\n');
 }
 

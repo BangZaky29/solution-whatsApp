@@ -1,4 +1,4 @@
-const supabase = require('../../config/supabase');
+﻿const supabase = require('../../config/supabase');
 
 async function getTokenBalance(userId) {
     const { data, error } = await supabase

@@ -1,4 +1,4 @@
-const supabase = require('../../../config/supabase');
+﻿const supabase = require('../../../config/supabase');
 
 async function getTargetMode(userId = null) {
     if (!userId || userId === 'null') return 'all';

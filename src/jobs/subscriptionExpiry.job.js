@@ -1,4 +1,4 @@
-function startSubscriptionExpiryJob() {
+﻿function startSubscriptionExpiryJob() {
     return setInterval(async () => {
         try {
             const paymentService = require('../services/payment/payment.service');

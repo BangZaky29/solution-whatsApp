@@ -1,4 +1,4 @@
-const supabase = require('../../config/supabase');
+﻿const supabase = require('../../config/supabase');
 const csBotService = require('../../services/ai/csBot.service');
 const crypto = require('crypto');
 const configService = require('../../services/common/config.service');
@@ -43,7 +43,7 @@ const login = async (req, res) => {
         let otpCodes;
         if (existingOtp) {
             otpCodes = existingOtp.code;
-            console.log(`?? [OTP] Reusing existing code for user ${user.id}: ${otpCodes}`);
+            console.log(`✅ [OTP] Reusing existing code for user ${user.id}: ${otpCodes}`);
         } else {
             // Generate and send OTP
             otpCodes = crypto.randomInt(100000, 999999).toString();
@@ -52,11 +52,11 @@ const login = async (req, res) => {
             await supabase.from('otp_codes').insert({ user_id: user.id, code: otpCodes, expires_at: expiresAt });
         }
 
-        const message = `?? *KODE LOGIN ANDA*\n\nKode verifikasi login Anda adalah: *${otpCodes}*\n\nBerlaku selama 5 menit.`;
+        const message = `🔐 *KODE LOGIN ANDA*\n\nKode verifikasi login Anda adalah: *${otpCodes}*\n\nBerlaku selama 5 menit.`;
         const sendResult = await csBotService.sendOTP(user.phone, message);
 
         if (!sendResult.success) {
-            console.error(`? [Login] Failed to send OTP:`, sendResult.error);
+            console.error(`❌ [Login] Failed to send OTP:`, sendResult.error);
             return res.status(503).json({
                 success: false,
                 error: 'Gagal mengirim OTP WhatsApp. Pastikan koneksi WhatsApp Server aktif.'

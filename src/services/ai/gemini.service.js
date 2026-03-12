@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+﻿const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 /**
  * Gemini Service
@@ -27,7 +27,7 @@ class GeminiService {
 
             const finalSystemPrompt = customPrompt || "Anda adalah asisten AI ramah.";
 
-            // ── MULTIMODAL SUPPORT ──
+            // â”€â”€ MULTIMODAL SUPPORT â”€â”€
             const parts = [
                 { text: `Instruction: ${finalSystemPrompt}` },
                 { text: history ? `Context History: ${history}` : "" },
@@ -36,7 +36,7 @@ class GeminiService {
 
             // If media is provided (Vision), add it as a part
             if (options.media && options.media.buffer && options.media.mimetype) {
-                console.log(`📸 [Gemini] Attaching multimodal part: ${options.media.mimetype}`);
+                console.log(`ðŸ“¸ [Gemini] Attaching multimodal part: ${options.media.mimetype}`);
                 parts.push({
                     inlineData: {
                         mimeType: options.media.mimetype,
@@ -61,7 +61,7 @@ class GeminiService {
             return text ? text.trim() : "AI terdiam... coba lagi bro.";
 
         } catch (error) {
-            console.error('❌ [Gemini Error]:', error.message);
+            console.error('âŒ [Gemini Error]:', error.message);
             // Error handling tetap sama...
             return "Aduh, AI-nya lagi pusing. Coba cek API Key atau kuota ya.";
         }

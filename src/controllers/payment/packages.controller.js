@@ -1,4 +1,4 @@
-const paymentService = require('../../services/payment/payment.service');
+﻿const paymentService = require('../../services/payment/payment.service');
 
 const getPackages = async (req, res) => {
     try {
@@ -6,7 +6,7 @@ const getPackages = async (req, res) => {
         const packages = await paymentService.getAllPackages(userId);
         res.json({ success: true, packages });
     } catch (error) {
-        console.error('? [PaymentController] getPackages error:', error.message);
+        console.error('❌ [PaymentController] getPackages error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };

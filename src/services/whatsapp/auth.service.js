@@ -1,4 +1,4 @@
-const {
+﻿const {
     initAuthCreds,
     proto
 } = require('@whiskeysockets/baileys');
@@ -76,7 +76,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
 
             if (error) throw error;
         } catch (err) {
-            console.error(`⚠️ [${sessionId}] Exception writing ${key}:`, err.message);
+            console.error(`âš ï¸ [${sessionId}] Exception writing ${key}:`, err.message);
         }
     };
 
@@ -106,7 +106,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
             });
             return results;
         } catch (err) {
-            console.error(`⚠️ [${sessionId}] Batch read error for ${type}:`, err.message);
+            console.error(`âš ï¸ [${sessionId}] Batch read error for ${type}:`, err.message);
             return {};
         }
     };
@@ -115,7 +115,7 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         try {
             await supabase.from(TABLE_NAME).delete().eq('id', getKey(type, id));
         } catch (err) {
-            console.error(`⚠️ [${sessionId}] Error removing ${type}:${id}:`, err.message);
+            console.error(`âš ï¸ [${sessionId}] Error removing ${type}:${id}:`, err.message);
         }
     };
 
@@ -163,17 +163,17 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
 
                     if (upserts.length > 0) {
                         const { error } = await supabase.from(TABLE_NAME).upsert(upserts, { onConflict: 'id' });
-                        if (error) console.error(`❌ [${sessionId}] Batch upsert failed:`, error.message);
+                        if (error) console.error(`âŒ [${sessionId}] Batch upsert failed:`, error.message);
                     }
 
                     if (deletes.length > 0) {
                         const { error } = await supabase.from(TABLE_NAME).delete().in('id', deletes);
-                        if (error) console.error(`❌ [${sessionId}] Batch delete failed:`, error.message);
+                        if (error) console.error(`âŒ [${sessionId}] Batch delete failed:`, error.message);
                     }
                 };
                 
                 writeMutex = writeMutex.then(task).catch(err => {
-                    console.error(`❌ [${sessionId}] Mutex write failed:`, err.message);
+                    console.error(`âŒ [${sessionId}] Mutex write failed:`, err.message);
                 });
                 return writeMutex;
             }
@@ -184,10 +184,10 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         state,
         saveCreds: async () => writeData('auth', 'creds', creds),
         clearSession: async () => {
-            console.log(`🧹 [${sessionId}] Clearing all session data from ${TABLE_NAME}...`);
+            console.log(`ðŸ§¹ [${sessionId}] Clearing all session data from ${TABLE_NAME}...`);
             // Use exact prefix match to avoid affecting other sessions in the same table
             const { error } = await supabase.from(TABLE_NAME).delete().filter('id', 'like', `${sessionId}:%`);
-            if (error) console.error(`❌ [${sessionId}] Clear session failed:`, error.message);
+            if (error) console.error(`âŒ [${sessionId}] Clear session failed:`, error.message);
         }
     };
 }

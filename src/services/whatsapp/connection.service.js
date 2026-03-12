@@ -1,4 +1,4 @@
-const {
+﻿const {
     default: makeWASocket,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore
@@ -22,7 +22,7 @@ class ConnectionService {
     async connect(sessionId = 'main-session', userId = null, phoneNumber = null) {
         // Guard: Prevent multiple simultaneous connection attempts for the same sessionId
         if (connectionLock.get(sessionId)) {
-            console.log(`ℹ️ [${sessionId}] Connection attempt already in progress. skipping.`);
+            console.log(`â„¹ï¸ [${sessionId}] Connection attempt already in progress. skipping.`);
             return;
         }
 
@@ -32,14 +32,14 @@ class ConnectionService {
 
             if (existingSession) {
                 if (existingSession.connectionState.connection === 'open') {
-                    console.log(`ℹ️ [${sessionId}] Already connected. skipping.`);
+                    console.log(`â„¹ï¸ [${sessionId}] Already connected. skipping.`);
                     connectionLock.delete(sessionId);
                     return;
                 }
 
                 // If there's an old socket, clean it up aggressively
                 if (existingSession.socket) {
-                    console.log(`🧹 [${sessionId}] Cleaning up old socket before reconnecting...`);
+                    console.log(`ðŸ§¹ [${sessionId}] Cleaning up old socket before reconnecting...`);
                     try {
                         existingSession.socket.ev.removeAllListeners();
                         existingSession.socket.end();
@@ -55,13 +55,13 @@ class ConnectionService {
                 const cleanRequestPhone = phoneNumber.replace(/\D/g, '');
                 const conflict = sessionManager.getSessionByPhone(cleanRequestPhone);
                 if (conflict && conflict.id !== sessionId) {
-                    console.log(`⚠️  [${displayName}] Conflict Detected: Phone ${cleanRequestPhone} is already active on session [${conflict.displayName}] (${conflict.id}). Skipping connection to prevent flapping.`);
+                    console.log(`âš ï¸  [${displayName}] Conflict Detected: Phone ${cleanRequestPhone} is already active on session [${conflict.displayName}] (${conflict.id}). Skipping connection to prevent flapping.`);
                     connectionLock.delete(sessionId);
                     return;
                 }
             }
 
-            console.log(`\n🚀 [${displayName}] Connecting to WhatsApp...`);
+            console.log(`\nðŸš€ [${displayName}] Connecting to WhatsApp...`);
 
             // Initialize or reset session data
             const sessionData = {
@@ -111,14 +111,14 @@ class ConnectionService {
             if (phoneNumber) {
                 const cleanNumber = phoneNumber.replace(/\D/g, '');
                 if (cleanNumber) {
-                    console.log(`🌀 [${displayName}] Requesting Pairing Code for: ${cleanNumber}`);
+                    console.log(`ðŸŒ€ [${displayName}] Requesting Pairing Code for: ${cleanNumber}`);
                     setTimeout(async () => {
                         try {
                             const code = await socket.requestPairingCode(cleanNumber);
                             sessionData.connectionState.pairingCode = code;
-                            console.log(`🔑 [${displayName}] Pairing Code Generated: ${code}`);
+                            console.log(`ðŸ”‘ [${displayName}] Pairing Code Generated: ${code}`);
                         } catch (err) {
-                            console.error(`❌ [${displayName}] Failed to generate pairing code:`, err.message);
+                            console.error(`âŒ [${displayName}] Failed to generate pairing code:`, err.message);
                         }
                     }, 3000);
                 }
@@ -138,7 +138,7 @@ class ConnectionService {
 
         } catch (error) {
             connectionLock.delete(sessionId);
-            console.error(`❌ [${sessionId}] Critical Connection Error:`, error.message);
+            console.error(`âŒ [${sessionId}] Critical Connection Error:`, error.message);
             // Retry connection after a delay
             setTimeout(() => this.connect(sessionId), 15000);
         }

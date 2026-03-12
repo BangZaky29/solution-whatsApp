@@ -1,4 +1,4 @@
-const whatsappService = require('../../services/whatsapp/whatsapp.service');
+﻿const whatsappService = require('../../services/whatsapp/whatsapp.service');
 const QRCode = require('qrcode');
 
 const getStatus = (req, res) => {

@@ -1,4 +1,4 @@
-function buildSubscriptionPayload(orderId, packageData, userData, frontendUrl) {
+﻿function buildSubscriptionPayload(orderId, packageData, userData, frontendUrl) {
     return {
         transaction_details: {
             order_id: orderId,

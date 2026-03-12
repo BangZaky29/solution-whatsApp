@@ -1,4 +1,4 @@
-async function getUserFeatures(userId) {
+﻿async function getUserFeatures(userId) {
   const sub = await this.getActiveSubscription(userId);
   if (!sub || !sub.packages) {
     // No active subscription -- return minimal/free features
@@ -18,7 +18,7 @@ async function getUserFeatures(userId) {
       dashboard_level: isDev ? "basic" : "none",
       package_name: null,
       expires_at: null,
-      ai_features: isDev ? ["basic_chat"] : [],
+      ai_features: isDev ❌ ["basic_chat"] : [],
       media_receive_enabled: isDev ? true : false,
       media_save_enabled: isDev ? true : false,
       media_send_enabled: false,

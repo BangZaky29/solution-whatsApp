@@ -1,4 +1,4 @@
-const supabase = require('../../../config/supabase');
+﻿const supabase = require('../../../config/supabase');
 
 async function getSetting(id) {
     try {

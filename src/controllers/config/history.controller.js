@@ -1,4 +1,4 @@
-const historyService = require('../../services/common/history.service');
+﻿const historyService = require('../../services/common/history.service');
 const supabase = require('../../config/supabase');
 
 const getHistory = async (req, res) => {

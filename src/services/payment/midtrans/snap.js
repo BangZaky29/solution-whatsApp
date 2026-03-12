@@ -1,4 +1,4 @@
-async function createSnapTransaction({
+﻿async function createSnapTransaction({
     baseUrl,
     authHeader,
     payload,
@@ -8,7 +8,7 @@ async function createSnapTransaction({
     try {
         if (!serverKey) {
             if (isDevelopment) {
-                console.log('🧪 [MidtransService] Mocking transaction for development (No Server Key)');
+                console.log('ðŸ§ª [MidtransService] Mocking transaction for development (No Server Key)');
                 return {
                     token: `mock-snap-token-${Date.now()}`,
                     redirect_url: `https://app.sandbox.midtrans.com/snap/v1/transactions/mock-redirect-${Date.now()}`,
@@ -31,17 +31,17 @@ async function createSnapTransaction({
         const data = await response.json();
 
         if (!response.ok) {
-            console.error('❌ [MidtransService] Snap API Error:', data);
+            console.error('âŒ [MidtransService] Snap API Error:', data);
             throw new Error(data.error_messages?.join(', ') || 'Midtrans API error');
         }
 
-        console.log(`✅ [MidtransService] Snap token created for order: ${payload.transaction_details.order_id}`);
+        console.log(`âœ… [MidtransService] Snap token created for order: ${payload.transaction_details.order_id}`);
         return {
             token: data.token,
             redirect_url: data.redirect_url,
         };
     } catch (error) {
-        console.error('❌ [MidtransService] Transaction creation failed:', error.message);
+        console.error('âŒ [MidtransService] Transaction creation failed:', error.message);
         throw error;
     }
 }

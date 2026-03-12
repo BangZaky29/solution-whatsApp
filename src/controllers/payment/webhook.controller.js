@@ -1,4 +1,4 @@
-const paymentService = require('../../services/payment/payment.service');
+﻿const paymentService = require('../../services/payment/payment.service');
 const notificationService = require('../../services/payment/notification.service');
 const midtransService = require('../../services/payment/midtrans.service');
 const supabase = require('../../config/supabase');
@@ -8,7 +8,7 @@ const webhook = async (req, res) => {
         const notification = req.body;
 
         // Log full body for debugging production issues
-        console.log(`\n?? [Webhook] Full Payload:`, JSON.stringify(notification, null, 2));
+        console.log(`\n✅ [Webhook] Full Payload:`, JSON.stringify(notification, null, 2));
 
         const {
             order_id,
@@ -19,20 +19,20 @@ const webhook = async (req, res) => {
         } = notification;
 
         console.log(`\n?? ============================================`);
-        console.log(`?? [Midtrans Webhook] Order: ${order_id}`);
+        console.log(`✅ [Midtrans Webhook] Order: ${order_id}`);
         console.log(`?? Status: ${transaction_status} | Fraud: ${fraud_status}`);
         console.log(`?? ============================================\n`);
 
         // Handle Midtrans Test Pings / Connection Tests
         // These often lack order_id or use dummy data that fails signature check
         if (!order_id || (notification.status_message && notification.status_message.toLowerCase().includes('test'))) {
-            console.log(`?? [Webhook] Acknowledging test notification/ping.`);
+            console.log(`✅ [Webhook] Acknowledging test notification/ping.`);
             return res.status(200).json({ success: true, message: 'Test notification received' });
         }
 
         // Verify signature
         if (!midtransService.verifySignature(notification)) {
-            console.error('? [Webhook] Invalid signature!');
+            console.error('❌ [Webhook] Invalid signature!');
             // Return 200 even on invalid signature to satisfy Midtrans,
             // but don't process the order.
             return res.status(200).json({ success: false, error: 'Invalid signature' });
@@ -43,7 +43,7 @@ const webhook = async (req, res) => {
 
         // Handle specific GoPay Account Linking or Recurring notifications if they don't have our order_id format
         if (!isSubscription && !isTopup) {
-            console.log(`?? [Webhook] Non-standard notification received:`, JSON.stringify(notification));
+            console.log(`✅ [Webhook] Non-standard notification received:`, JSON.stringify(notification));
             // Just acknowledge to Midtrans
             return res.status(200).json({ success: true, message: 'Notification received' });
         }
@@ -51,7 +51,7 @@ const webhook = async (req, res) => {
         // Handle based on transaction status
         if (transaction_status === 'capture' || transaction_status === 'settlement') {
             if (fraud_status && fraud_status !== 'accept') {
-                console.warn(`?? [Webhook] Fraud detected for ${order_id}`);
+                console.warn(`✅ [Webhook] Fraud detected for ${order_id}`);
                 return res.status(200).json({ success: true });
             }
 
@@ -63,7 +63,7 @@ const webhook = async (req, res) => {
                     .eq('midtrans_order_id', order_id)
                     .single();
                 if (existingSub && existingSub.status === 'active') {
-                    console.log(`? [Webhook] Order ${order_id} already active. Skipping.`);
+                    console.log(`❌ [Webhook] Order ${order_id} already active. Skipping.`);
                     return res.status(200).json({ success: true });
                 }
             }
@@ -74,7 +74,7 @@ const webhook = async (req, res) => {
                     .eq('midtrans_order_id', order_id)
                     .single();
                 if (existingOrder && existingOrder.status === 'paid') {
-                    console.log(`? [Webhook] Order ${order_id} already paid. Skipping.`);
+                    console.log(`❌ [Webhook] Order ${order_id} already paid. Skipping.`);
                     return res.status(200).json({ success: true });
                 }
             }
@@ -151,16 +151,16 @@ const webhook = async (req, res) => {
             if (isSubscription) await paymentService.expireSubscription(order_id);
             if (isTopup) await paymentService.expireTopup(order_id);
         } else if (payment_type === 'recurring' || notification.recurring) {
-            console.log(`?? [Webhook] Recurring payment notification for ${order_id}: ${transaction_status}`);
+            console.log(`✅ [Webhook] Recurring payment notification for ${order_id}: ${transaction_status}`);
             // Core logic for recurring is usually handled by 'settlement' above
         } else {
-            console.log(`?? [Webhook] Unhandled status: ${transaction_status} for ${order_id}`);
+            console.log(`✅ [Webhook] Unhandled status: ${transaction_status} for ${order_id}`);
         }
         // 'pending'  no action needed, subscription already in pending state
 
         res.status(200).json({ success: true });
     } catch (error) {
-        console.error('? [Webhook] Processing error:', error.message);
+        console.error('❌ [Webhook] Processing error:', error.message);
         // Always return 200 to Midtrans to prevent retries on our errors
         res.status(200).json({ success: false, error: error.message });
     }

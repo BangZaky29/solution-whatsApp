@@ -1,4 +1,4 @@
-function buildAuthHeader(serverKey) {
+﻿function buildAuthHeader(serverKey) {
     const encoded = Buffer.from(`${serverKey}:`).toString('base64');
     return `Basic ${encoded}`;
 }

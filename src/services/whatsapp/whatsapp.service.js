@@ -1,4 +1,4 @@
-function formatPhoneNumber(number) {
+﻿function formatPhoneNumber(number) {
     if (number.includes('@')) return number;
     let cleaned = number.replace(/\D/g, '');
     if (cleaned.startsWith('0')) cleaned = '62' + cleaned.substring(1);

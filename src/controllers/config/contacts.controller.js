@@ -1,4 +1,4 @@
-const configService = require('../../services/common/config.service');
+﻿const configService = require('../../services/common/config.service');
 const paymentService = require('../../services/payment/payment.service');
 const supabase = require('../../config/supabase');
 
@@ -19,11 +19,11 @@ const addContact = async (req, res) => {
         const { jid, name } = req.body;
 
         // LOG untuk debugging (Cek di terminal PM2/Node)
-        console.log(`?? [addContact] Header ID: ${userId} | JID: ${jid}`);
+        console.log(`✅ [addContact] Header ID: ${userId} | JID: ${jid}`);
 
         // 1. Validasi: Jangan biarkan userId kosong atau string "null"/"undefined"
         if (!userId || userId === 'null' || userId === 'undefined') {
-            console.error("? [addContact] User ID is missing or invalid string");
+            console.error("❌ [addContact] User ID is missing or invalid string");
             return res.status(400).json({
                 success: false,
                 error: 'Header x-session-id wajib diisi dengan UUID yang valid.'
@@ -50,7 +50,7 @@ const addContact = async (req, res) => {
 
         // 3. Cek Error dari Supabase
         if (result.error) {
-            console.error(`? [addContact] Supabase Error:`, result.error.message);
+            console.error(`❌ [addContact] Supabase Error:`, result.error.message);
 
             // Jika error karena format UUID salah (bukan format 8-4-4-4-12)
             if (result.error.code === '22P02') {
@@ -64,11 +64,11 @@ const addContact = async (req, res) => {
         }
 
         const displayName = await configService.getUserDisplay(userId);
-        console.log(`? [addContact] Berhasil nambahin kontak buat user: ${displayName}`);
+        console.log(`❌ [addContact] Berhasil nambahin kontak buat user: ${displayName}`);
         res.json({ success: true });
 
     } catch (error) {
-        console.error(`? [addContact] Catch Exception:`, error.message);
+        console.error(`❌ [addContact] Catch Exception:`, error.message);
         res.status(500).json({
             success: false,
             error: 'Gagal nambahin kontak. Cek log server.'
@@ -84,12 +84,12 @@ const updateContact = async (req, res) => {
         let query = supabase.from(configService.contactsTable).update({ push_name: name }).eq('jid', jid).eq('user_id', userId);
         const { error } = await query;
         if (error) {
-            console.error(`? [updateContact] Error:`, error.message);
+            console.error(`❌ [updateContact] Error:`, error.message);
             throw error;
         }
         res.json({ success: true });
     } catch (error) {
-        console.error(`? [updateContact] Catch:`, error.message);
+        console.error(`❌ [updateContact] Catch:`, error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };
@@ -99,12 +99,12 @@ const deleteContact = async (req, res) => {
         const userId = req.userId;
         const { error } = await configService.removeContact(req.params.jid, userId);
         if (error) {
-            console.error(`? [deleteContact] Error:`, error.message);
+            console.error(`❌ [deleteContact] Error:`, error.message);
             throw error;
         }
         res.json({ success: true });
     } catch (error) {
-        console.error(`? [deleteContact] Catch:`, error.message);
+        console.error(`❌ [deleteContact] Catch:`, error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };

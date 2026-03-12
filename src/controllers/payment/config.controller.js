@@ -1,4 +1,4 @@
-const midtransService = require('../../services/payment/midtrans.service');
+﻿const midtransService = require('../../services/payment/midtrans.service');
 
 const getMidtransConfig = async (req, res) => {
     res.json({

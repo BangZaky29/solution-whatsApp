@@ -1,4 +1,4 @@
-const configService = require('../../services/common/config.service');
+﻿const configService = require('../../services/common/config.service');
 const paymentService = require('../../services/payment/payment.service');
 const supabase = require('../../config/supabase');
 
@@ -7,7 +7,7 @@ const getKeys = async (req, res) => {
         const userId = req.userId;
         const keys = await configService.getAllApiKeys(userId);
         const displayName = await configService.getUserDisplay(userId);
-        console.log(`?? [getKeys] User: ${displayName} | Keys found: ${keys.length}`);
+        console.log(`✅ [getKeys] User: ${displayName} | Keys found: ${keys.length}`);
         res.json({ success: true, keys });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -42,12 +42,12 @@ const addKey = async (req, res) => {
 
         const { error } = await configService.addApiKey(name, key, model, version, userId);
         if (error) {
-            console.error(`? [addKey] Error:`, error.message);
+            console.error(`❌ [addKey] Error:`, error.message);
             throw error;
         }
         res.json({ success: true });
     } catch (error) {
-        console.error(`? [addKey] Catch:`, error.message);
+        console.error(`❌ [addKey] Catch:`, error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };
@@ -59,12 +59,12 @@ const updateKey = async (req, res) => {
         const { name, key, model, version } = req.body;
         const { error } = await configService.updateApiKey(id, name, key, model, version, userId);
         if (error) {
-            console.error(`? [updateKey] Error:`, error.message);
+            console.error(`❌ [updateKey] Error:`, error.message);
             throw error;
         }
         res.json({ success: true });
     } catch (error) {
-        console.error(`? [updateKey] Catch:`, error.message);
+        console.error(`❌ [updateKey] Catch:`, error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };
@@ -74,12 +74,12 @@ const deleteKey = async (req, res) => {
         const userId = req.userId;
         const { error } = await configService.removeApiKey(req.params.id, userId);
         if (error) {
-            console.error(`? [deleteKey] Error:`, error.message);
+            console.error(`❌ [deleteKey] Error:`, error.message);
             throw error;
         }
         res.json({ success: true });
     } catch (error) {
-        console.error(`? [deleteKey] Catch:`, error.message);
+        console.error(`❌ [deleteKey] Catch:`, error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };
@@ -89,12 +89,12 @@ const activateKey = async (req, res) => {
         const userId = req.userId;
         const result = await configService.activateApiKey(req.params.id, userId);
         if (result.error) {
-            console.error(`? [activateKey] Error:`, result.error.message);
+            console.error(`❌ [activateKey] Error:`, result.error.message);
             throw result.error;
         }
         res.json({ success: true });
     } catch (error) {
-        console.error(`? [activateKey] Catch:`, error.message);
+        console.error(`❌ [activateKey] Catch:`, error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };

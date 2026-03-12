@@ -1,4 +1,4 @@
-const { DisconnectReason } = require('@whiskeysockets/baileys');
+﻿const { DisconnectReason } = require('@whiskeysockets/baileys');
 const sessionManager = require('./session.manager');
 const configService = require('../common/config.service');
 const { logger } = require('../../config/logger');

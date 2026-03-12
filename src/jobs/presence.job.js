@@ -1,4 +1,4 @@
-function startPresenceJob(sessionManager) {
+﻿function startPresenceJob(sessionManager) {
     return setInterval(() => {
         sessionManager.forEach(({ socket, connectionState }, sessionId) => {
             if (socket && connectionState.connection === 'open') {

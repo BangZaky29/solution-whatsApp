@@ -1,4 +1,4 @@
-const whatsappService = require('../whatsapp/whatsapp.service');
+﻿const whatsappService = require('../whatsapp/whatsapp.service');
 const {
     buildPaymentPendingMessage,
     buildPaymentSuccessMessage,
@@ -25,7 +25,7 @@ const { buildTrialExpiringMessage } = require('./notification/trial.messages');
 class NotificationService {
     constructor() {
         this.csSessionId = 'CS-BOT';
-        console.log(`🔔 [NotificationService] Initialized with session: ${this.csSessionId}`);
+        console.log(`ðŸ”” [NotificationService] Initialized with session: ${this.csSessionId}`);
     }
 
     /*
@@ -35,7 +35,7 @@ class NotificationService {
         const sessionManager = require('../whatsapp/session.manager');
         const session = sessionManager.getSession(this.csSessionId);
         if (!session || !session.socket || session.connectionState.connection !== 'open') {
-            console.warn(`⚠️ [NotificationService] CS-BOT session is not available`);
+            console.warn(`âš ï¸ [NotificationService] CS-BOT session is not available`);
             return null;
         }
         return session.socket;
@@ -47,15 +47,15 @@ class NotificationService {
     async _send(phone, message) {
         const socket = this._getSocket();
         if (!socket) {
-            console.warn(`⚠️ [NotificationService] Cannot send notification: CS-BOT offline`);
+            console.warn(`âš ï¸ [NotificationService] Cannot send notification: CS-BOT offline`);
             return { success: false, error: 'CS-BOT is offline' };
         }
         return await whatsappService.sendTextMessage(socket, phone, message);
     }
 
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // PAYMENT NOTIFICATIONS
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     async notifyPaymentPending(phone, userName, packageName, orderId) {
         const message = buildPaymentPendingMessage(userName, packageName, orderId);
@@ -72,18 +72,18 @@ class NotificationService {
         return await this._send(phone, message);
     }
 
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // TOP-UP NOTIFICATIONS
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     async notifyTopupSuccess(phone, userName, tokenAmount, newBalance) {
         const message = buildTopupSuccessMessage(userName, tokenAmount, newBalance);
         return await this._send(phone, message);
     }
 
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // TOKEN & SUBSCRIPTION ALERTS
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     async notifyTokenLow(phone, userName, balance) {
         const message = buildTokenLowMessage(userName, balance);
@@ -105,9 +105,9 @@ class NotificationService {
         return await this._send(phone, message);
     }
 
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // AUTH NOTIFICATIONS
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     async notifyRegistration(phone, userName) {
         const message = buildRegistrationMessage(userName);
@@ -119,9 +119,9 @@ class NotificationService {
         return await this._send(phone, message);
     }
 
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // TRIAL NOTIFICATIONS
-    // ═══════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     async notifyTrialExpiring(phone, userName) {
         const message = buildTrialExpiringMessage(userName);

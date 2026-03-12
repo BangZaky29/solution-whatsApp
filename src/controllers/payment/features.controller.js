@@ -1,4 +1,4 @@
-const paymentService = require('../../services/payment/payment.service');
+﻿const paymentService = require('../../services/payment/payment.service');
 
 const getUserFeatures = async (req, res) => {
     try {
@@ -6,7 +6,7 @@ const getUserFeatures = async (req, res) => {
         const features = await paymentService.getUserFeatures(userId);
         res.json({ success: true, features });
     } catch (error) {
-        console.error('? [getUserFeatures] Error:', error.message);
+        console.error('❌ [getUserFeatures] Error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };

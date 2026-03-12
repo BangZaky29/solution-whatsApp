@@ -1,4 +1,4 @@
-const supabase = require('../../config/supabase');
+﻿const supabase = require('../../config/supabase');
 const csBotService = require('../../services/ai/csBot.service');
 const crypto = require('crypto');
 const notificationService = require('../../services/payment/notification.service');
@@ -54,7 +54,7 @@ const register = async (req, res) => {
         let otpCodes;
         if (existingOtp) {
             otpCodes = existingOtp.code;
-            console.log(`?? [OTP] Reusing existing code for ${username}: ${otpCodes}`);
+            console.log(`✅ [OTP] Reusing existing code for ${username}: ${otpCodes}`);
         } else {
             // Generate New OTP
             otpCodes = crypto.randomInt(100000, 999999).toString();
@@ -72,7 +72,7 @@ const register = async (req, res) => {
         const sendResult = await csBotService.sendOTP(phone, message);
 
         if (!sendResult.success) {
-            console.error(`? [Register] Failed to send OTP:`, sendResult.error);
+            console.error(`❌ [Register] Failed to send OTP:`, sendResult.error);
             return res.status(503).json({
                 success: false,
                 error: 'Pendaftaran berhasil disimpan, namun gagal mengirim OTP WhatsApp. Hubungi admin untuk aktivasi manual.'
@@ -87,7 +87,7 @@ const register = async (req, res) => {
 
         // Notify registration (async)
         notificationService.notifyRegistration(phone, full_name || username || 'User');
-        console.log(`?? [Register] User registered: ${username}`);
+        console.log(`✅ [Register] User registered: ${username}`);
 
     } catch (error) {
         console.error('Registration error:', error);

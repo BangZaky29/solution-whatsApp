@@ -1,4 +1,4 @@
-const configService = require('../../services/common/config.service');
+﻿const configService = require('../../services/common/config.service');
 const aiBotService = require('../../services/ai/aiBot.service');
 
 const getSystemPrompt = async (req, res) => {

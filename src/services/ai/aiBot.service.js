@@ -1,4 +1,4 @@
-const geminiService = require("./gemini.service");
+﻿const geminiService = require("./gemini.service");
 const whatsappService = require("../whatsapp/whatsapp.service");
 const historyService = require("../common/history.service");
 const configService = require("../common/config.service");
@@ -32,7 +32,7 @@ class AIBotService {
   constructor() {
     this.config = { systemPrompt: "" };
     this.pendingMedia = new Map(); // Store { remoteJid: msg }
-    console.log(`🤖 [AI-Bot] Service initialized for multi-user mode`);
+    console.log(`ðŸ¤– [AI-Bot] Service initialized for multi-user mode`);
   }
 
   async init() {
@@ -61,7 +61,7 @@ class AIBotService {
 
     if (!userId && sessionId !== "wa-bot-ai") return;
 
-    // ── LOAD CONTROLS EARLY (feature gating) ──
+    // â”€â”€ LOAD CONTROLS EARLY (feature gating) â”€â”€
     const controls = await configService.getAIControls(userId);
 
     const isGroup = remoteJid.endsWith("@g.us");
@@ -72,24 +72,24 @@ class AIBotService {
     const myLidBase = myLid ? myLid.split(":")[0].split("@")[0] : "";
     const displayName = session?.displayName || sessionId;
 
-    // ── FEATURE FLAG: GROUP CHAT ──
+    // â”€â”€ FEATURE FLAG: GROUP CHAT â”€â”€
     if (isGroup && !controls.group_chat_enabled) {
       console.log(
-        `🚫 [AI-Bot][${displayName}] Group chat DISABLED for this user. Skipping.`,
+        `ðŸš« [AI-Bot][${displayName}] Group chat DISABLED for this user. Skipping.`,
       );
       return;
     }
 
-    // ── ROBUST TEXT EXTRACTION ──
+    // â”€â”€ ROBUST TEXT EXTRACTION â”€â”€
     const messageText = getMessageText(msg.message);
     const lowerText = messageText.toLowerCase();
     const mentions =
       msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
-    // ── TOP-LEVEL LOGGING ──
+    // â”€â”€ TOP-LEVEL LOGGING â”€â”€
     if (isGroup) {
       console.log(
-        `📩 [AI-Bot][${displayName}] Incoming group message: ${remoteJid}`,
+        `ðŸ“© [AI-Bot][${displayName}] Incoming group message: ${remoteJid}`,
       );
       console.log(`   - Sender: ${msg.key.participant || "unknown"}`);
       console.log(`   - MyBaseJid: ${myJid} | MyLid: ${myLid}`);
@@ -97,7 +97,7 @@ class AIBotService {
       console.log(`   - Raw Text: "${messageText}"`);
     }
 
-    // ── Item #X: GROUP MENTION, REPLY & KEYWORD DETECTION ──
+    // â”€â”€ Item #X: GROUP MENTION, REPLY & KEYWORD DETECTION â”€â”€
     if (isGroup) {
       const { shouldProcess, triggerType, quotedParticipant } =
         getGroupTriggerInfo({
@@ -135,7 +135,7 @@ class AIBotService {
       if (isGroup) {
         try {
           console.log(
-            `🔍 [AI-Bot][${displayName}] Attempting to resolve group name for ${remoteJid}`,
+            `ðŸ” [AI-Bot][${displayName}] Attempting to resolve group name for ${remoteJid}`,
           );
           // Race against 5s timeout to prevent hanging the AI pipeline
           const metadata = await Promise.race([
@@ -149,11 +149,11 @@ class AIBotService {
           ]);
           logName = metadata.subject || logName;
           console.log(
-            `📦 [AI-Bot][${displayName}] Resolved group name: ${logName}`,
+            `ðŸ“¦ [AI-Bot][${displayName}] Resolved group name: ${logName}`,
           );
         } catch (e) {
           console.warn(
-            `⚠️ [AI-Bot][${displayName}] Metadata fetch failed: ${e.message}`,
+            `âš ï¸ [AI-Bot][${displayName}] Metadata fetch failed: ${e.message}`,
           );
           // Fallback to pushName which is already set
         }
@@ -161,7 +161,7 @@ class AIBotService {
 
       await configService.logBlockedAttempt(remoteJid, logName, userId);
       console.log(
-        `🚫 [AI-Bot][${displayName}] Target ${isGroup ? "Group" : "Sender"} "${logName}" NOT whitelisted. Logged to blocklist.`,
+        `ðŸš« [AI-Bot][${displayName}] Target ${isGroup ? "Group" : "Sender"} "${logName}" NOT whitelisted. Logged to blocklist.`,
       );
       logService.warn(
         userId,
@@ -171,7 +171,7 @@ class AIBotService {
       return;
     }
 
-    // ── Item #9: SKIP SYSTEM MESSAGES (CS-BOT & MAIN-SESSION) ──
+    // â”€â”€ Item #9: SKIP SYSTEM MESSAGES (CS-BOT & MAIN-SESSION) â”€â”€
     // Skip messages from system sessions to avoid AI responding to notifications
     const systemSessions = ["CS-BOT", process.env.SESSION_ID || "main-session"];
     for (const sysId of systemSessions) {
@@ -184,7 +184,7 @@ class AIBotService {
             : null;
           if (sysNumber && cleanSender === sysNumber) {
             console.log(
-              `🤖 [AI-Bot][${displayName}] Skipping system message from ${sysId} (${cleanSender}).`,
+              `ðŸ¤– [AI-Bot][${displayName}] Skipping system message from ${sysId} (${cleanSender}).`,
             );
             logService.system(
               userId,
@@ -200,7 +200,7 @@ class AIBotService {
     const messageType = msg.message ? Object.keys(msg.message)[0] : null;
     // messageText is already defined above
 
-    // ── Item #X: DEFENSIVE MEDIA HANDLING ──
+    // â”€â”€ Item #X: DEFENSIVE MEDIA HANDLING â”€â”€
     const saveKeywords = ["simpan", "save", "store", "unggah", "upload"];
     const confirmKeywords = [
       "iya",
@@ -233,10 +233,10 @@ class AIBotService {
         rejectKeywords,
       });
 
-    // ── FEATURE FLAG: MEDIA RECEIVE ──
+    // â”€â”€ FEATURE FLAG: MEDIA RECEIVE â”€â”€
     if (isMedia && !controls.media_receive_enabled) {
       console.log(
-        `📵 [AI-Bot][${displayName}] Media receive DISABLED. Skipping media.`,
+        `ðŸ“µ [AI-Bot][${displayName}] Media receive DISABLED. Skipping media.`,
       );
       if (!messageText) return;
       // Fall through to process text if present
@@ -248,7 +248,7 @@ class AIBotService {
       if (hasSaveIntent) {
         if (controls.media_save_to_cloud) {
           console.log(
-            `📸 [AI-Bot][${displayName}] Media detected WITH save intent. Processing...`,
+            `ðŸ“¸ [AI-Bot][${displayName}] Media detected WITH save intent. Processing...`,
           );
           const mediaService = require("../whatsapp/media.service");
           mediaRecord = await mediaService.processIncomingMedia(msg, userId);
@@ -257,11 +257,11 @@ class AIBotService {
               remoteJid,
               {
                 text:
-                  `✅ *Media Berhasil Disimpan*\\n\\n` +
-                  `📝 *Nama:* ${mediaRecord.file_name}\\n` +
-                  `📁 *Tipe:* ${mediaRecord.file_type}\\n` +
-                  `📡 *Status:* Tersimpan di Cloud (Supabase)\\n` +
-                  `🔗 *URL:* ${mediaRecord.public_url}`,
+                  `âœ… *Media Berhasil Disimpan*\\n\\n` +
+                  `ðŸ“ *Nama:* ${mediaRecord.file_name}\\n` +
+                  `ðŸ“ *Tipe:* ${mediaRecord.file_type}\\n` +
+                  `ðŸ“¡ *Status:* Tersimpan di Cloud (Supabase)\\n` +
+                  `ðŸ”— *URL:* ${mediaRecord.public_url}`,
               },
               { quoted: msg },
             );
@@ -270,32 +270,32 @@ class AIBotService {
           await socket.sendMessage(
             remoteJid,
             {
-              text: `❌ *Penyimpanan Media Dinonaktifkan*\\n\\nFitur simpan media ke cloud belum diaktifkan. Aktifkan di dashboard Features.`,
+              text: `âŒ *Penyimpanan Media Dinonaktifkan*\\n\\nFitur simpan media ke cloud belum diaktifkan. Aktifkan di dashboard Features.`,
             },
             { quoted: msg },
           );
         }
       } else if (controls.media_confirm_before_save) {
         console.log(
-          `📸 [AI-Bot][${displayName}] Media detected WITHOUT intent. Caching for confirmation.`,
+          `ðŸ“¸ [AI-Bot][${displayName}] Media detected WITHOUT intent. Caching for confirmation.`,
         );
         this.pendingMedia.set(remoteJid, msg);
         await socket.sendMessage(
           remoteJid,
           {
-            text: `📸 *Media Terdeteksi*\n\nbro lu ngirim ${messageType.replace("Message", "")} mau disimpan gak?`,
+            text: `ðŸ“¸ *Media Terdeteksi*\n\nbro lu ngirim ${messageType.replace("Message", "")} mau disimpan gak?`,
           },
           { quoted: msg },
         );
         return; // Wait for confirmation
       } else {
         console.log(
-          `📸 [AI-Bot][${displayName}] Media detected WITHOUT intent. Confirmation disabled, skipping cache.`,
+          `ðŸ“¸ [AI-Bot][${displayName}] Media detected WITHOUT intent. Confirmation disabled, skipping cache.`,
         );
       }
     } else if (isConfirming) {
       console.log(
-        `👍 [AI-Bot][${displayName}] User confirmed media storage. Processing cached media...`,
+        `ðŸ‘ [AI-Bot][${displayName}] User confirmed media storage. Processing cached media...`,
       );
       const cachedMsg = this.pendingMedia.get(remoteJid);
       const mediaService = require("../whatsapp/media.service");
@@ -306,11 +306,11 @@ class AIBotService {
           remoteJid,
           {
             text:
-              `✅ *Media Berhasil Disimpan*\n\n` +
-              `📝 *Nama:* ${mediaRecord.file_name}\n` +
-              `📁 *Tipe:* ${mediaRecord.file_type}\n` +
-              `📡 *Status:* Tersimpan di Cloud (Supabase)\n` +
-              `🔗 *URL:* ${mediaRecord.public_url}`,
+              `âœ… *Media Berhasil Disimpan*\n\n` +
+              `ðŸ“ *Nama:* ${mediaRecord.file_name}\n` +
+              `ðŸ“ *Tipe:* ${mediaRecord.file_type}\n` +
+              `ðŸ“¡ *Status:* Tersimpan di Cloud (Supabase)\n` +
+              `ðŸ”— *URL:* ${mediaRecord.public_url}`,
           },
           { quoted: msg },
         );
@@ -319,12 +319,12 @@ class AIBotService {
       return;
     } else if (isRejecting) {
       console.log(
-        `🛑 [AI-Bot][${displayName}] User rejected media storage. Clearing cache.`,
+        `ðŸ›‘ [AI-Bot][${displayName}] User rejected media storage. Clearing cache.`,
       );
       this.pendingMedia.delete(remoteJid);
       await socket.sendMessage(
         remoteJid,
-        { text: "Oke bro, media gak bakal gue simpan. 👌" },
+        { text: "Oke bro, media gak bakal gue simpan. ðŸ‘Œ" },
         { quoted: msg },
       );
       return;
@@ -334,7 +334,7 @@ class AIBotService {
 
     // NEW: Check for AI enabled and delay
     if (!controls.is_ai_enabled) {
-      console.log(`🔇 [AI-Bot][${displayName}] AI is DISABLED for this user.`);
+      console.log(`ðŸ”‡ [AI-Bot][${displayName}] AI is DISABLED for this user.`);
       logService.warn(
         userId,
         sessionId,
@@ -343,12 +343,12 @@ class AIBotService {
       return;
     }
 
-    // ── TOKEN ENFORCEMENT ──
+    // â”€â”€ TOKEN ENFORCEMENT â”€â”€
     if (userId && UUID_REGEX.test(userId)) {
       const subscription = await paymentService.getActiveSubscription(userId);
       if (!subscription) {
         console.log(
-          `💳 [AI-Bot][${displayName}] No active subscription. Blocking.`,
+          `ðŸ’³ [AI-Bot][${displayName}] No active subscription. Blocking.`,
         );
         logService.error(
           userId,
@@ -356,7 +356,7 @@ class AIBotService {
           `No active subscription found. Blocked AI response.`,
         );
         await socket.sendMessage(remoteJid, {
-          text: "⚠️ Langganan Anda tidak aktif. Silakan berlangganan di dashboard WA-BOT-AI untuk menggunakan fitur AI.",
+          text: "âš ï¸ Langganan Anda tidak aktif. Silakan berlangganan di dashboard WA-BOT-AI untuk menggunakan fitur AI.",
         });
         return;
       }
@@ -364,7 +364,7 @@ class AIBotService {
       const hasTokens = await paymentService.hasEnoughTokens(userId, 10);
       if (!hasTokens) {
         console.log(
-          `🎫 [AI-Bot][${displayName}] Insufficient tokens. Blocking.`,
+          `ðŸŽ« [AI-Bot][${displayName}] Insufficient tokens. Blocking.`,
         );
         logService.error(
           userId,
@@ -372,7 +372,7 @@ class AIBotService {
           `Insufficient tokens (Requires 10). Blocked AI response.`,
         );
         await socket.sendMessage(remoteJid, {
-          text: "⚠️ Token Anda habis. Silakan top-up token di dashboard WA-BOT-AI.",
+          text: "âš ï¸ Token Anda habis. Silakan top-up token di dashboard WA-BOT-AI.",
         });
         // Notify via CS-BOT
         const { data: user } = await supabase
@@ -408,7 +408,7 @@ class AIBotService {
     }
 
     console.log(
-      `🤖 [AI-Bot][${displayName}] Message from ${cleanSender}: "${fullMessageText}"`,
+      `ðŸ¤– [AI-Bot][${displayName}] Message from ${cleanSender}: "${fullMessageText}"`,
     );
     logService.info(
       userId,
@@ -465,7 +465,7 @@ class AIBotService {
     try {
       const activeKeyConfig = await configService.getGeminiApiKey(userId);
       console.log(
-        `🤖 [AI-Bot][${displayName}] Using API Key model: ${activeKeyConfig.model} (Custom: ${!!activeKeyConfig.key && activeKeyConfig.key !== process.env.GEMINI_API_KEY})`,
+        `ðŸ¤– [AI-Bot][${displayName}] Using API Key model: ${activeKeyConfig.model} (Custom: ${!!activeKeyConfig.key && activeKeyConfig.key !== process.env.GEMINI_API_KEY})`,
       );
       logService.system(
         userId,
@@ -506,7 +506,7 @@ class AIBotService {
       if (controls.response_delay_mins > 0) {
         const delayMs = controls.response_delay_mins * 60 * 1000;
         console.log(
-          `⏱️ [AI-Bot][${displayName}] Delaying response for ${controls.response_delay_mins} mins...`,
+          `â±ï¸ [AI-Bot][${displayName}] Delaying response for ${controls.response_delay_mins} mins...`,
         );
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
@@ -526,7 +526,7 @@ class AIBotService {
           return Buffer.from(response.data, "binary");
         } catch (error) {
           console.error(
-            `❌ [AI-Bot][${displayName}] Failed to fetch media from URL: ${url}`,
+            `âŒ [AI-Bot][${displayName}] Failed to fetch media from URL: ${url}`,
             error.message,
           );
           return null;
@@ -536,13 +536,13 @@ class AIBotService {
       // Send actual media if parsed
       if (imageUrl) {
         console.log(
-          `📤 [AI-Bot][${displayName}] AI sending IMAGE: ${imageUrl}`,
+          `ðŸ“¤ [AI-Bot][${displayName}] AI sending IMAGE: ${imageUrl}`,
         );
         const buffer = await fetchMediaBuffer(imageUrl);
         if (buffer) {
           await socket.sendMessage(remoteJid, {
             image: buffer,
-            caption: "Ini kak fotonya... 😉",
+            caption: "Ini kak fotonya... ðŸ˜‰",
           });
         } else {
           await socket.sendMessage(remoteJid, {
@@ -551,7 +551,7 @@ class AIBotService {
         }
       } else if (videoUrl) {
         console.log(
-          `📤 [AI-Bot][${displayName}] AI sending VIDEO: ${videoUrl}`,
+          `ðŸ“¤ [AI-Bot][${displayName}] AI sending VIDEO: ${videoUrl}`,
         );
         const buffer = await fetchMediaBuffer(videoUrl);
         if (buffer) {
@@ -563,7 +563,7 @@ class AIBotService {
         }
       } else if (audioUrl) {
         console.log(
-          `📤 [AI-Bot][${displayName}] AI sending AUDIO: ${audioUrl}`,
+          `ðŸ“¤ [AI-Bot][${displayName}] AI sending AUDIO: ${audioUrl}`,
         );
         const buffer = await fetchMediaBuffer(audioUrl);
         if (buffer) {
@@ -581,7 +581,7 @@ class AIBotService {
 
       await configService.incrementStat("responses", userId);
 
-      // ── DEDUCT TOKENS ──
+      // â”€â”€ DEDUCT TOKENS â”€â”€
       if (userId && UUID_REGEX.test(userId)) {
         const deductResult = await paymentService.deductTokens(
           userId,
@@ -591,7 +591,7 @@ class AIBotService {
         );
         if (deductResult.success) {
           console.log(
-            `🎫 [AI-Bot][${displayName}] Deducted 10 tokens. Remaining: ${deductResult.balance}`,
+            `ðŸŽ« [AI-Bot][${displayName}] Deducted 10 tokens. Remaining: ${deductResult.balance}`,
           );
           logService.system(
             userId,
@@ -642,7 +642,7 @@ class AIBotService {
         );
       }
     } catch (error) {
-      console.error(`❌ [AI-Bot][${displayName}] Error:`, error.message);
+      console.error(`âŒ [AI-Bot][${displayName}] Error:`, error.message);
       logService.error(
         userId,
         sessionId,

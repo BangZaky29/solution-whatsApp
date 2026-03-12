@@ -1,4 +1,4 @@
-/**
+﻿/**
  * User Auth Middleware
  * Verifies the x-session-id header for data isolation.
  */

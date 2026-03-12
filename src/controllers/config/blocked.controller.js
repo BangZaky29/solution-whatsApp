@@ -1,4 +1,4 @@
-const configService = require('../../services/common/config.service');
+﻿const configService = require('../../services/common/config.service');
 
 const getBlockedAttempts = async (req, res) => {
     try {

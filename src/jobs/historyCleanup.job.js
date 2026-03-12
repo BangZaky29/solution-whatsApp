@@ -1,4 +1,4 @@
-function startHistoryCleanupJob() {
+﻿function startHistoryCleanupJob() {
     return setInterval(async () => {
         const historyService = require('../services/common/history.service');
         await historyService.clearAllHistory();

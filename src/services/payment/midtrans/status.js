@@ -1,4 +1,4 @@
-async function getTransactionStatus({ coreApiUrl, authHeader, orderId }) {
+﻿async function getTransactionStatus({ coreApiUrl, authHeader, orderId }) {
     try {
         const response = await fetch(`${coreApiUrl}/${orderId}/status`, {
             method: 'GET',
@@ -11,7 +11,7 @@ async function getTransactionStatus({ coreApiUrl, authHeader, orderId }) {
         const data = await response.json();
         return data;
     } catch (error) {
-        console.error('❌ [MidtransService] Status check failed:', error.message);
+        console.error('âŒ [MidtransService] Status check failed:', error.message);
         throw error;
     }
 }

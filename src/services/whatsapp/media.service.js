@@ -1,4 +1,4 @@
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+﻿const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const supabase = require('../../config/supabase');
 const configService = require('../common/config.service');
 const crypto = require('crypto');
@@ -28,7 +28,7 @@ class MediaService {
 
             if (!mediaType) return null;
 
-            console.log(`📥 [MediaService] Downloading ${mediaType} from WhatsApp...`);
+            console.log(`ðŸ“¥ [MediaService] Downloading ${mediaType} from WhatsApp...`);
 
             // 1. Download buffer from Baileys
             const buffer = await downloadMediaMessage(
@@ -55,7 +55,7 @@ class MediaService {
             const filePath = `${userId}/${mediaType}/${fileName}`;
 
             // 3. Upload to Supabase Storage
-            console.log(`📤 [MediaService] Uploading to Supabase: ${filePath}...`);
+            console.log(`ðŸ“¤ [MediaService] Uploading to Supabase: ${filePath}...`);
             const { data, error } = await supabase.storage
                 .from(this.bucketName)
                 .upload(filePath, buffer, {
@@ -90,10 +90,10 @@ class MediaService {
                 .insert(mediaRecord);
 
             if (dbError) {
-                console.warn('⚠️ [MediaService] Failed to save media record to DB:', dbError.message);
+                console.warn('âš ï¸ [MediaService] Failed to save media record to DB:', dbError.message);
             }
 
-            console.log(`✅ [MediaService] Media processed: ${publicUrl}`);
+            console.log(`âœ… [MediaService] Media processed: ${publicUrl}`);
             return {
                 ...mediaRecord,
                 buffer,
@@ -101,7 +101,7 @@ class MediaService {
             };
 
         } catch (error) {
-            console.error('❌ [MediaService] Process error:', error.message);
+            console.error('âŒ [MediaService] Process error:', error.message);
             return null;
         }
     }

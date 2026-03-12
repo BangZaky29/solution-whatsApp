@@ -1,22 +1,22 @@
-function buildRegistrationMessage(userName) {
+﻿function buildRegistrationMessage(userName) {
     return [
-        `🎉 *SELAMAT DATANG DI WA-BOT-AI!*`,
+        `ðŸŽ‰ *SELAMAT DATANG DI WA-BOT-AI!*`,
         ``,
         `Halo ${userName},`,
         `Akun Anda berhasil didaftarkan.`,
         ``,
-        `🚀 *NEW USER PROMO:*`,
-        `Dapatkan diskon *80%* untuk semua paket pembelian pertama Anda! ✨`,
+        `ðŸš€ *NEW USER PROMO:*`,
+        `Dapatkan diskon *80%* untuk semua paket pembelian pertama Anda! âœ¨`,
         ``,
         `Berlangganan sekarang di dashboard untuk mulai menggunakan fitur AI.`,
         ``,
-        `Selamat mencoba! 🚀`,
+        `Selamat mencoba! ðŸš€`,
     ].join('\n');
 }
 
 function buildLoginMessage(userName) {
     return [
-        `🔐 *LOGIN BERHASIL*`,
+        `ðŸ” *LOGIN BERHASIL*`,
         ``,
         `Halo ${userName},`,
         `Anda baru saja login ke WA-BOT-AI.`,

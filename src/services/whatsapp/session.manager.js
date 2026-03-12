@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SessionManager handles the global state of WhatsApp sessions.
  */
 class SessionManager {

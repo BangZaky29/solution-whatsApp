@@ -1,4 +1,4 @@
-const paymentService = require('../../services/payment/payment.service');
+﻿const paymentService = require('../../services/payment/payment.service');
 const midtransService = require('../../services/payment/midtrans.service');
 const notificationService = require('../../services/payment/notification.service');
 const supabase = require('../../config/supabase');
@@ -73,7 +73,7 @@ const subscribe = async (req, res) => {
             );
         }
 
-        console.log(`?? [PaymentController] Subscription order created: ${orderId} for user ${userId}`);
+        console.log(`✅ [PaymentController] Subscription order created: ${orderId} for user ${userId}`);
 
         res.json({
             success: true,
@@ -82,7 +82,7 @@ const subscribe = async (req, res) => {
             redirectUrl: snapResult.redirect_url,
         });
     } catch (error) {
-        console.error('? [PaymentController] subscribe error details:', {
+        console.error('❌ [PaymentController] subscribe error details:', {
             message: error.message,
             stack: error.stack,
             userId: req.userId
@@ -103,7 +103,7 @@ const getMySubscription = async (req, res) => {
             features,
         });
     } catch (error) {
-        console.error('? [PaymentController] getMySubscription error:', error.message);
+        console.error('❌ [PaymentController] getMySubscription error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };

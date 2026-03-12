@@ -1,4 +1,4 @@
-const sessionManager = require('../services/whatsapp/session.manager');
+﻿const sessionManager = require('../services/whatsapp/session.manager');
 
 /**
  * Middleware to validate WhatsApp session

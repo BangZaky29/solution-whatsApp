@@ -1,4 +1,4 @@
-function buildMidtransConfig(env = process.env) {
+﻿function buildMidtransConfig(env = process.env) {
     const serverKey = env.MIDTRANS_SERVER_KEY;
     const clientKey = env.MIDTRANS_CLIENT_KEY;
     const isProduction = env.MIDTRANS_IS_PRODUCTION === 'true';

@@ -1,4 +1,4 @@
-const supabase = require('../../config/supabase');
+﻿const supabase = require('../../config/supabase');
 const csBotService = require('../../services/ai/csBot.service');
 const crypto = require('crypto');
 const configService = require('../../services/common/config.service');
@@ -56,7 +56,7 @@ const resendOtp = async (req, res) => {
         const sendResult = await csBotService.sendOTP(user.phone, message);
 
         if (!sendResult.success) {
-            console.error(`? [ResendOTP] Failed to send OTP:`, sendResult.error);
+            console.error(`❌ [ResendOTP] Failed to send OTP:`, sendResult.error);
             return res.status(503).json({
                 success: false,
                 error: 'Gagal mengirim ulang OTP. Pastikan koneksi WhatsApp Server aktif.'

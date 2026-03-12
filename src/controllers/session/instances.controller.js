@@ -1,4 +1,4 @@
-const sessionManager = require('../../services/whatsapp/session.manager');
+﻿const sessionManager = require('../../services/whatsapp/session.manager');
 const configService = require('../../services/common/config.service');
 
 const getEnrichedInstances = async (req, res) => {

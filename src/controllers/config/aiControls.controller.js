@@ -1,4 +1,4 @@
-const configService = require('../../services/common/config.service');
+﻿const configService = require('../../services/common/config.service');
 
 const getAIControls = async (req, res) => {
     try {
@@ -18,7 +18,7 @@ const updateAIControls = async (req, res) => {
 
         if (success) {
             const displayName = await configService.getUserDisplay(userId);
-            console.log(`\n[CONFIGURATION-User]:\n? [Config] AI Controls updated for user: ${displayName}`);
+            console.log(`\n[CONFIGURATION-User]:\n❌ [Config] AI Controls updated for user: ${displayName}`);
         }
 
         res.json({ success });

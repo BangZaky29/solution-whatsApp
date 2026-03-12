@@ -1,4 +1,4 @@
-const supabase = require('../../config/supabase');
+﻿const supabase = require('../../config/supabase');
 const configService = require('../../services/common/config.service');
 const csBotService = require('../../services/ai/csBot.service');
 const crypto = require('crypto');
@@ -32,7 +32,7 @@ const requestWipeOtp = async (req, res) => {
         const sendResult = await csBotService.sendOTP(user.phone, message);
 
         if (!sendResult.success) {
-            console.error(`? [requestWipeOtp] Failed to send OTP:`, sendResult.error);
+            console.error(`❌ [requestWipeOtp] Failed to send OTP:`, sendResult.error);
             return res.status(503).json({
                 success: false,
                 error: 'Gagal mengirim OTP WhatsApp. Pastikan CS-BOT aktif.'
@@ -41,7 +41,7 @@ const requestWipeOtp = async (req, res) => {
 
         res.json({ success: true, message: 'OTP sent to your WhatsApp.' });
     } catch (error) {
-        console.error(`? [requestWipeOtp] Catch:`, error.message);
+        console.error(`❌ [requestWipeOtp] Catch:`, error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };
@@ -78,37 +78,37 @@ const wipeAccountData = async (req, res) => {
         const { data: user } = await supabase.from('users').select('phone').eq('id', userId).single();
 
         console.log(`\n?? ============================================`);
-        console.log(`?? [wipeAccountData] FULL ACCOUNT DELETION`);
+        console.log(`✅ [wipeAccountData] FULL ACCOUNT DELETION`);
         console.log(`?? User: ${displayName} (${userId})`);
         console.log(`?? ============================================\n`);
 
         //  STEP 1: Disconnect & clear WhatsApp session 
         const session = sessionManager.getSession(userId);
         if (session) {
-            console.log(`?? [wipeAccountData] Disconnecting WhatsApp session...`);
+            console.log(`✅ [wipeAccountData] Disconnecting WhatsApp session...`);
             if (session.socket) {
                 try {
                     await session.socket.logout();
-                    console.log(`? [wipeAccountData] WhatsApp socket logged out.`);
+                    console.log(`❌ [wipeAccountData] WhatsApp socket logged out.`);
                 } catch (e) {
-                    console.warn(`?? [wipeAccountData] Socket logout warning: ${e.message}`);
+                    console.warn(`✅ [wipeAccountData] Socket logout warning: ${e.message}`);
                 }
             }
             // Clear WA auth state from database (session keys stored in wa_ai_sessions)
             if (session.clearSessionHandler) {
                 try {
                     await session.clearSessionHandler();
-                    console.log(`? [wipeAccountData] WA auth state cleared from database.`);
+                    console.log(`❌ [wipeAccountData] WA auth state cleared from database.`);
                 } catch (e) {
-                    console.warn(`?? [wipeAccountData] Clear session warning: ${e.message}`);
+                    console.warn(`✅ [wipeAccountData] Clear session warning: ${e.message}`);
                 }
             }
             sessionManager.deleteSession(userId);
-            console.log(`? [wipeAccountData] In-memory session removed.`);
+            console.log(`❌ [wipeAccountData] In-memory session removed.`);
         }
 
         //  STEP 2: Delete files from Storage (whatsapp-media) 
-        console.log(`?? [wipeAccountData] Cleaning up storage files...`);
+        console.log(`✅ [wipeAccountData] Cleaning up storage files...`);
         try {
             // List all files in the user's folder
             const { data: files, error: listError } = await supabase.storage
@@ -122,13 +122,13 @@ const wipeAccountData = async (req, res) => {
                     .remove(pathsToDelete);
 
                 if (deleteError) {
-                    console.warn(`?? [wipeAccountData] Storage deletion warning: ${deleteError.message}`);
+                    console.warn(`✅ [wipeAccountData] Storage deletion warning: ${deleteError.message}`);
                 } else {
-                    console.log(`? [wipeAccountData] Deleted ${files.length} files from storage.`);
+                    console.log(`❌ [wipeAccountData] Deleted ${files.length} files from storage.`);
                 }
             }
         } catch (e) {
-            console.warn(`?? [wipeAccountData] Storage cleanup exception: ${e.message}`);
+            console.warn(`✅ [wipeAccountData] Storage cleanup exception: ${e.message}`);
         }
 
         //  STEP 3: Dynamic Table Deletion based on Environment 
@@ -162,7 +162,7 @@ const wipeAccountData = async (req, res) => {
             if (tblErr) {
                 // Ignore errors for tables that might not exist in local mode (like subscriptions)
                 if (tblErr.code !== '42P01') {
-                    console.warn(`?? [wipeAccountData] Warning deleting from ${table}: ${tblErr.message}`);
+                    console.warn(`✅ [wipeAccountData] Warning deleting from ${table}: ${tblErr.message}`);
                 }
             }
         }
@@ -176,29 +176,29 @@ const wipeAccountData = async (req, res) => {
             .like('id', `%${userId}%`);
 
         if (settingsErr) {
-            console.warn(`?? [wipeAccountData] Warning deleting from ${settingsTable}: ${settingsErr.message}`);
+            console.warn(`✅ [wipeAccountData] Warning deleting from ${settingsTable}: ${settingsErr.message}`);
         }
 
         //  STEP 5: Delete user from public.users 
-        console.log(`?? [wipeAccountData] Deleting user record from public.users...`);
+        console.log(`✅ [wipeAccountData] Deleting user record from public.users...`);
         const { error: usersErr } = await supabase
             .from('users')
             .delete()
             .eq('id', userId);
 
         if (usersErr) {
-            console.error(`? [wipeAccountData] Failed to delete from public.users: ${usersErr.message}`);
+            console.error(`❌ [wipeAccountData] Failed to delete from public.users: ${usersErr.message}`);
             throw new Error(`Failed to delete user record: ${usersErr.message}`);
         }
 
         //  STEP 6: Delete auth identity from Supabase Auth 
-        console.log(`?? [wipeAccountData] Deleting Supabase Auth user...`);
+        console.log(`✅ [wipeAccountData] Deleting Supabase Auth user...`);
         const { error: authError } = await supabase.auth.admin.deleteUser(userId);
         if (authError) {
-            console.error(`? [wipeAccountData] Failed to delete auth user: ${authError.message}`);
+            console.error(`❌ [wipeAccountData] Failed to delete auth user: ${authError.message}`);
             // We proceed as public data is already wiped
         } else {
-            console.log(`? [wipeAccountData] Supabase Auth user DELETED.`);
+            console.log(`❌ [wipeAccountData] Supabase Auth user DELETED.`);
         }
 
         //  STEP 7: Final Notification (If possible) 
@@ -207,11 +207,11 @@ const wipeAccountData = async (req, res) => {
             await csBotService.sendOTP(user.phone, finalMsg);
         }
 
-        console.log(`\n?? [wipeAccountData] COMPLETE - Account ${displayName} fully removed.\n`);
+        console.log(`\n✅ [wipeAccountData] COMPLETE - Account ${displayName} fully removed.\n`);
 
         res.json({ success: true, message: 'Account and all data have been permanently deleted.' });
     } catch (error) {
-        console.error(`? [wipeAccountData] FATAL ERROR:`, error.message);
+        console.error(`❌ [wipeAccountData] FATAL ERROR:`, error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };

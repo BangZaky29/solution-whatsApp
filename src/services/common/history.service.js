@@ -1,4 +1,4 @@
-const supabase = require('../../config/supabase');
+﻿const supabase = require('../../config/supabase');
 
 /**
  * History Service
@@ -79,7 +79,7 @@ class HistoryService {
                     onConflict: 'jid,user_id'
                 });
         } catch (err) {
-            console.error(`❌ [History Error] Save exception:`, err.message);
+            console.error(`âŒ [History Error] Save exception:`, err.message);
         }
     }
 
@@ -135,7 +135,7 @@ class HistoryService {
                 })
                 .eq('user_id', userId);
         } catch (err) {
-            console.error(`❌ [History Error] Cleanup exception:`, err.message);
+            console.error(`âŒ [History Error] Cleanup exception:`, err.message);
         }
     }
 }

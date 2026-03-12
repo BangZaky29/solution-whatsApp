@@ -1,4 +1,4 @@
-const paymentService = require('../../services/payment/payment.service');
+﻿const paymentService = require('../../services/payment/payment.service');
 const supabase = require('../../config/supabase');
 
 const getLogs = async (req, res) => {
@@ -23,7 +23,7 @@ const getLogs = async (req, res) => {
         const isExplicitAdmin = userId === 'bfccbe71-7f5f-4d2c-b98b-1b1449341596';
 
         if (!features.log_monitor_enabled && !isDev && !isAdmin && !isDeveloper && !isExplicitAdmin) {
-            console.warn(`?? [getLogs] Access Denied for ${userId}. Role: ${user?.role}, Phone: ${user?.phone}, DevNo: ${process.env.DEVELOPER_WA_NUMBER}`);
+            console.warn(`✅ [getLogs] Access Denied for ${userId}. Role: ${user?.role}, Phone: ${user?.phone}, DevNo: ${process.env.DEVELOPER_WA_NUMBER}`);
             return res.status(403).json({
                 success: false,
                 error: 'Feature not included in package',

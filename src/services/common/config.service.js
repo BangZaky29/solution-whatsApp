@@ -1,4 +1,4 @@
-const settings = require('./config/settings.service');
+﻿const settings = require('./config/settings.service');
 const prompts = require('./config/prompts.service');
 const contacts = require('./config/contacts.service');
 const keys = require('./config/keys.service');

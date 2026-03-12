@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+﻿const crypto = require('crypto');
 
 function verifySignature({ notification, serverKey }) {
     const { order_id, status_code, gross_amount, signature_key } = notification;

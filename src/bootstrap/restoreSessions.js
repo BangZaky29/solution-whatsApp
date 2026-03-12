@@ -1,4 +1,4 @@
-async function restoreSessions({ configService, connectionService }) {
+﻿async function restoreSessions({ configService, connectionService }) {
     // Auto-restore all active sessions from database (respects NODE_ENV)
     const dbSessions = await configService.getAllUserSessions();
     const uniqueSessions = [...new Set(dbSessions)];

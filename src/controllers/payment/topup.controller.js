@@ -1,4 +1,4 @@
-const paymentService = require('../../services/payment/payment.service');
+﻿const paymentService = require('../../services/payment/payment.service');
 const midtransService = require('../../services/payment/midtrans.service');
 const supabase = require('../../config/supabase');
 
@@ -60,7 +60,7 @@ const topup = async (req, res) => {
         // 6. Create pending topup order
         await paymentService.createTopupOrder(userId, tokenAmount, price, orderId);
 
-        console.log(`?? [PaymentController] Topup order created: ${orderId} for ${tokenAmount} token`);
+        console.log(`✅ [PaymentController] Topup order created: ${orderId} for ${tokenAmount} token`);
 
         res.json({
             success: true,
@@ -69,7 +69,7 @@ const topup = async (req, res) => {
             redirectUrl: snapResult.redirect_url,
         });
     } catch (error) {
-        console.error('? [PaymentController] topup error:', error.message);
+        console.error('❌ [PaymentController] topup error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };
@@ -87,7 +87,7 @@ const getMyTokens = async (req, res) => {
             transactions,
         });
     } catch (error) {
-        console.error('? [PaymentController] getMyTokens error:', error.message);
+        console.error('❌ [PaymentController] getMyTokens error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };

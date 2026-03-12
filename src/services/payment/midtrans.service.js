@@ -1,4 +1,4 @@
-const { buildMidtransConfig } = require('./midtrans/config');
+﻿const { buildMidtransConfig } = require('./midtrans/config');
 const { buildAuthHeader } = require('./midtrans/auth');
 const { buildSubscriptionPayload, buildTopupPayload } = require('./midtrans/payloads');
 const { createSnapTransaction } = require('./midtrans/snap');
@@ -22,18 +22,18 @@ class MidtransService {
         this.baseUrl = config.baseUrl;
         this.coreApiUrl = config.coreApiUrl;
 
-        // ── Validation: Check if keys match environment ──
+        // â”€â”€ Validation: Check if keys match environment â”€â”€
         if (this.serverKey) {
             const isSandboxKey = this.serverKey.startsWith('SB-');
             if (this.isProduction && isSandboxKey) {
-                console.error('❌ [MidtransService] CRITICAL: Using SANDBOX key in PRODUCTION mode!');
+                console.error('âŒ [MidtransService] CRITICAL: Using SANDBOX key in PRODUCTION mode!');
             } else if (!this.isProduction && !isSandboxKey) {
-                console.error('❌ [MidtransService] CRITICAL: Using PRODUCTION key in SANDBOX mode!');
-                console.error('ℹ️ [MidtransService] Sandbox keys must start with "SB-".');
+                console.error('âŒ [MidtransService] CRITICAL: Using PRODUCTION key in SANDBOX mode!');
+                console.error('â„¹ï¸ [MidtransService] Sandbox keys must start with "SB-".');
             }
         }
 
-        console.log(`💳 [MidtransService] Initialized (${this.isProduction ? 'PRODUCTION' : 'LIVE'})`);
+        console.log(`ðŸ’³ [MidtransService] Initialized (${this.isProduction ? 'PRODUCTION' : 'LIVE'})`);
     }
 
     /**
