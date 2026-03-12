@@ -96,6 +96,7 @@ class ConnectionService {
                 printQRInTerminal: false,
                 generateHighQualityLinkPreview: true,
                 browser: ['WhatsApp Gateway', 'Chrome', '120.0.0'],
+                retryRequestDelayMs: 5000,
                 getMessage: async (key) => {
                     return undefined;
                 }

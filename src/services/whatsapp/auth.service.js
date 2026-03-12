@@ -124,6 +124,8 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         creds = initAuthCreds();
     }
 
+    let writeMutex = Promise.resolve();
+
     const state = {
         creds,
         keys: {
@@ -139,34 +141,41 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
                 }
                 return results;
             },
-            set: async (data) => {
-                const upserts = [];
-                const deletes = [];
+            set: (data) => {
+                const task = async () => {
+                    const upserts = [];
+                    const deletes = [];
 
-                for (const type in data) {
-                    for (const id in data[type]) {
-                        const key = getKey(type, id);
-                        if (data[type][id]) {
-                            upserts.push({
-                                id: key,
-                                value: bufferToBase64(data[type][id]),
-                                updated_at: new Date().toISOString()
-                            });
-                        } else {
-                            deletes.push(key);
+                    for (const type in data) {
+                        for (const id in data[type]) {
+                            const key = getKey(type, id);
+                            if (data[type][id]) {
+                                upserts.push({
+                                    id: key,
+                                    value: bufferToBase64(data[type][id]),
+                                    updated_at: new Date().toISOString()
+                                });
+                            } else {
+                                deletes.push(key);
+                            }
                         }
                     }
-                }
 
-                if (upserts.length > 0) {
-                    const { error } = await supabase.from(TABLE_NAME).upsert(upserts, { onConflict: 'id' });
-                    if (error) console.error(`❌ [${sessionId}] Batch upsert failed:`, error.message);
-                }
+                    if (upserts.length > 0) {
+                        const { error } = await supabase.from(TABLE_NAME).upsert(upserts, { onConflict: 'id' });
+                        if (error) console.error(`❌ [${sessionId}] Batch upsert failed:`, error.message);
+                    }
 
-                if (deletes.length > 0) {
-                    const { error } = await supabase.from(TABLE_NAME).delete().in('id', deletes);
-                    if (error) console.error(`❌ [${sessionId}] Batch delete failed:`, error.message);
-                }
+                    if (deletes.length > 0) {
+                        const { error } = await supabase.from(TABLE_NAME).delete().in('id', deletes);
+                        if (error) console.error(`❌ [${sessionId}] Batch delete failed:`, error.message);
+                    }
+                };
+                
+                writeMutex = writeMutex.then(task).catch(err => {
+                    console.error(`❌ [${sessionId}] Mutex write failed:`, err.message);
+                });
+                return writeMutex;
             }
         }
     };

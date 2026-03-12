@@ -82,7 +82,7 @@ function registerConnectionUpdateHandler({ socket, sessionData, sessionId, clear
 
 function registerMessageUpsertHandler({ socket, sessionId }) {
     socket.ev.on('messages.upsert', async ({ messages, type }) => {
-        logger.info(`[${sessionId}] messages.upsert type=${type}, count=${messages.length}`);
+        logger.debug(`[${sessionId}] messages.upsert type=${type}, count=${messages.length}`);
 
         if (type === 'notify') {
             const aiBotService = require('../ai/aiBot.service');
