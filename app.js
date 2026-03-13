@@ -34,6 +34,7 @@ const { startSessionWatchdogJob } = require('./src/jobs/sessionWatchdog.job');
 const whatsappRoutes = require('./src/routes/whatsapp.routes');
 const authRoutes = require('./src/routes/auth.routes');
 const paymentRoutes = require('./src/routes/payment.routes');
+const moderatorRoutes = require('./src/routes/moderator.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -92,6 +93,7 @@ app.get('/health', (req, res) => {
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/moderator', moderatorRoutes);
 
 // Error Handling
 app.use(notFoundHandler);

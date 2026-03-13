@@ -226,3 +226,15 @@ CREATE TABLE public.wa_sessions_local (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT wa_sessions_local_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.moderator_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  moderator_phone text NOT NULL,
+  raw_command text NOT NULL,
+  parsed_action text NOT NULL,
+  target_identifier text,
+  status text DEFAULT 'success'::text,
+  reason text,
+  result_summary text,
+  executed_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT moderator_logs_pkey PRIMARY KEY (id)
+);

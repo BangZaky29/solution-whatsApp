@@ -1,4 +1,4 @@
-﻿const geminiService = require("./gemini.service");
+const geminiService = require("./gemini.service");
 const whatsappService = require("../whatsapp/whatsapp.service");
 const historyService = require("../common/history.service");
 const configService = require("../common/config.service");
@@ -16,6 +16,10 @@ const {
 // Payment & Token System
 const paymentService = require("../payment/payment.service");
 const notificationService = require("../payment/notification.service");
+
+// Moderator System
+const moderatorGuard = require("../moderator/moderatorGuard");
+const moderatorBot = require("../moderator/moderatorBot.service");
 
 // UUID detection regex
 const UUID_REGEX =
@@ -126,6 +130,13 @@ class AIBotService {
     const participantJid = msg.key.participant || remoteJid;
     const senderId = participantJid.split("@")[0].split(":")[0];
     const cleanSender = senderId.replace(/\D/g, "");
+
+    // ── MODERATOR INTERCEPT ──
+    // Route moderator messages to dedicated handler before normal flow
+    if (!isGroup && (await moderatorGuard.isModerator(cleanSender))) {
+      console.log(`🛡️ [AI-Bot][${displayName}] Moderator detected: ${cleanSender}. Routing to ModeratorBot.`);
+      return await moderatorBot.handle(sessionId, socket, msg);
+    }
 
     const isAllowed = await configService.isContactAllowed(remoteJid, userId);
     if (!isAllowed) {
@@ -343,50 +354,57 @@ class AIBotService {
       return;
     }
 
-    // ── TOKEN ENFORCEMENT ──
+    // ── TOKEN ENFORCEMENT (skip for moderators) ──
     if (userId && UUID_REGEX.test(userId)) {
-      const subscription = await paymentService.getActiveSubscription(userId);
-      if (!subscription) {
+      const userRole = await moderatorGuard.getUserRoleById(userId);
+      if (userRole === 'moderator') {
         console.log(
-          `💳 [AI-Bot][${displayName}] No active subscription. Blocking.`,
+          `🛡️ [AI-Bot][${displayName}] Moderator role detected. Bypassing token/subscription check.`,
         );
-        logService.error(
-          userId,
-          sessionId,
-          `No active subscription found. Blocked AI response.`,
-        );
-        await socket.sendMessage(remoteJid, {
-          text: "⚠️ Langganan Anda tidak aktif. Silakan berlangganan di dashboard WA-BOT-AI untuk menggunakan fitur AI.",
-        });
-        return;
-      }
-
-      const hasTokens = await paymentService.hasEnoughTokens(userId, 10);
-      if (!hasTokens) {
-        console.log(
-          `✨ [AI-Bot][${displayName}] Insufficient tokens. Blocking.`,
-        );
-        logService.error(
-          userId,
-          sessionId,
-          `Insufficient tokens (Requires 10). Blocked AI response.`,
-        );
-        await socket.sendMessage(remoteJid, {
-          text: "⚠️ Token Anda habis. Silakan top-up token di dashboard WA-BOT-AI.",
-        });
-        // Notify via CS-BOT
-        const { data: user } = await supabase
-          .from("users")
-          .select("phone, full_name, username")
-          .eq("id", userId)
-          .single();
-        if (user?.phone) {
-          await notificationService.notifyTokenDepleted(
-            user.phone,
-            user.full_name || user.username || "User",
+      } else {
+        const subscription = await paymentService.getActiveSubscription(userId);
+        if (!subscription) {
+          console.log(
+            `💳 [AI-Bot][${displayName}] No active subscription. Blocking.`,
           );
+          logService.error(
+            userId,
+            sessionId,
+            `No active subscription found. Blocked AI response.`,
+          );
+          await socket.sendMessage(remoteJid, {
+            text: "⚠️ Langganan Anda tidak aktif. Silakan berlangganan di dashboard WA-BOT-AI untuk menggunakan fitur AI.",
+          });
+          return;
         }
-        return;
+
+        const hasTokens = await paymentService.hasEnoughTokens(userId, 10);
+        if (!hasTokens) {
+          console.log(
+            `✨ [AI-Bot][${displayName}] Insufficient tokens. Blocking.`,
+          );
+          logService.error(
+            userId,
+            sessionId,
+            `Insufficient tokens (Requires 10). Blocked AI response.`,
+          );
+          await socket.sendMessage(remoteJid, {
+            text: "⚠️ Token Anda habis. Silakan top-up token di dashboard WA-BOT-AI.",
+          });
+          // Notify via CS-BOT
+          const { data: user } = await supabase
+            .from("users")
+            .select("phone, full_name, username")
+            .eq("id", userId)
+            .single();
+          if (user?.phone) {
+            await notificationService.notifyTokenDepleted(
+              user.phone,
+              user.full_name || user.username || "User",
+            );
+          }
+          return;
+        }
       }
     }
 
