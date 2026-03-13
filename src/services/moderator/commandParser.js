@@ -56,6 +56,9 @@ Contoh:
 Input: "hapus semua media dari user bangzaky0029"
 Output: {"action":"delete_media","target":{"phone":null,"username":"bangzaky0029","name":null},"params":{"mediaType":"all"},"isDestructive":true,"rawIntent":"Hapus semua media user bangzaky0029"}
 
+Input: "hapus semua media foto nya saja dari user bangzaky0029"
+Output: {"action":"delete_media","target":{"phone":null,"username":"bangzaky0029","name":null},"params":{"mediaType":"image"},"isDestructive":true,"rawIntent":"Hapus media FOTO user bangzaky0029"}
+
 Input: "aktifkan paket premium starter untuk 628988761937"
 Output: {"action":"activate_package","target":{"phone":"628988761937","username":null,"name":null},"params":{"packageName":"starter"},"isDestructive":false,"rawIntent":"Aktifkan paket starter untuk user 628988761937"}
 

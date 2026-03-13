@@ -6,10 +6,14 @@ const supabase = require('../../config/supabase');
  * Uses two layers: ENV whitelist + DB role check.
  */
 
-// Normalize phone: strip leading 0, ensure 62 prefix
-function normalizePhone(phone) {
-    let clean = phone.replace(/\D/g, '');
-    if (clean.startsWith('0')) clean = '62' + clean.substring(1);
+// Normalize: strip non-digits, but handle potential LIDs (which are just digits usually)
+function normalizeIdentifier(identifier) {
+    if (!identifier) return '';
+    let clean = identifier.replace(/\D/g, '');
+    // If it's a standard phone (9-13 digits) starting with 0, prefix with 62
+    if (clean.length >= 9 && clean.length <= 15 && clean.startsWith('0')) {
+        clean = '62' + clean.substring(1);
+    }
     return clean;
 }
 
@@ -19,27 +23,42 @@ function normalizePhone(phone) {
 function isModeratorPhone(senderPhone) {
     const modPhone = process.env.MODERATOR_PHONE;
     if (!modPhone) return false;
-    return normalizePhone(senderPhone) === normalizePhone(modPhone);
+    return normalizeIdentifier(senderPhone) === normalizeIdentifier(modPhone);
 }
 
 /**
- * Check if sender is a moderator (ENV or DB role)
- * @param {string} senderPhone - raw phone number from WA
+ * Check if identifier is a moderator (ENV or DB role)
+ * @param {string} identifier - phone or LID
  * @returns {Promise<boolean>}
  */
-async function isModerator(senderPhone) {
-    // Layer 1: ENV whitelist (fastest check)
-    if (isModeratorPhone(senderPhone)) return true;
+async function isModerator(identifier) {
+    if (!identifier) return false;
+    
+    // Layer 1: ENV whitelist
+    const modPhone = process.env.MODERATOR_PHONE;
+    const normalized = normalizeIdentifier(identifier);
+    if (modPhone && normalized === normalizeIdentifier(modPhone)) return true;
 
     // Layer 2: DB role check
-    const normalized = normalizePhone(senderPhone);
     const { data } = await supabase
         .from('users')
         .select('role')
-        .eq('phone', normalized)
-        .single();
+        .or(`phone.eq.${normalized},id.eq.${identifier}`) // Check phone or UUID/LID matching
+        .maybeSingle();
 
-    return data?.role === 'moderator';
+    if (data?.role === 'moderator') return true;
+    
+    // Special fallback: checking if this normalized string exists in users.phone
+    if (normalized) {
+        const { data: phoneUser } = await supabase
+            .from('users')
+            .select('role')
+            .eq('phone', normalized)
+            .maybeSingle();
+        if (phoneUser?.role === 'moderator') return true;
+    }
+
+    return false;
 }
 
 /**
@@ -47,15 +66,14 @@ async function isModerator(senderPhone) {
  * @param {string} phone
  * @returns {Promise<string|null>}
  */
-async function getUserRole(phone) {
-    const normalized = normalizePhone(phone);
-    const { data } = await supabase
+function getUserRole(identifier) {
+    const normalized = normalizeIdentifier(identifier);
+    return supabase
         .from('users')
         .select('role')
-        .eq('phone', normalized)
-        .single();
-
-    return data?.role || null;
+        .or(`phone.eq.${normalized},id.eq.${identifier}`)
+        .maybeSingle()
+        .then(({ data }) => data?.role || null);
 }
 
 /**
@@ -78,5 +96,6 @@ module.exports = {
     isModeratorPhone,
     getUserRole,
     getUserRoleById,
-    normalizePhone
+    normalizeIdentifier,
+    normalizePhone: normalizeIdentifier // Alias for backward compatibility
 };

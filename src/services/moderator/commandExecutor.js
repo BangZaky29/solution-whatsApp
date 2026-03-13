@@ -59,7 +59,7 @@ async function executeDeleteMedia(target, params) {
     if (bucketPaths.length > 0) {
         try {
             const { error: storageError } = await supabase.storage
-                .from('wa-media')
+                .from('whatsapp-media')
                 .remove(bucketPaths);
             if (storageError) {
                 console.warn(`⚠️ [Executor] Storage delete partial error: ${storageError.message}`);

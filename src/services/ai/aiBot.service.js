@@ -129,7 +129,8 @@ class AIBotService {
 
     const participantJid = msg.key.participant || remoteJid;
     const senderId = participantJid.split("@")[0].split(":")[0];
-    const cleanSender = senderId.replace(/\D/g, "");
+    const cleanSender = moderatorGuard.normalizeIdentifier(senderId);
+    const senderPushName = msg.pushName || "Moderator";
 
     // ── MODERATOR INTERCEPT ──
     const isSenderWhitelisted = await moderatorGuard.isModerator(cleanSender);
@@ -137,10 +138,15 @@ class AIBotService {
     const isOwnerModerator = ownerRole === 'moderator';
     const isMe = cleanSender === myNumber || (myLidBase && cleanSender === myLidBase);
     
+    // DEBUG: Log moderator check components
+    if (isOwnerModerator) {
+        console.log(`🛡️ [ModeratorCheck] Session=${displayName} | Sender=${cleanSender} | isMe=${isMe} | isWhitelisted=${isSenderWhitelisted}`);
+    }
+
     const isModeratorActive = !isGroup && !isBypassModeratorCheck && (isSenderWhitelisted || (isMe && isOwnerModerator));
 
     if (isModeratorActive) {
-      console.log(`🛡️ [AI-Bot][${displayName}] Moderator detected: ${cleanSender} (isMe: ${isMe}). Routing to ModeratorBot.`);
+      console.log(`🛡️ [AI-Bot][${displayName}] Moderator ACTIVE for: ${senderPushName} (${cleanSender}). Routing to ModeratorBot.`);
       return await moderatorBot.handle(sessionId, socket, msg);
     }
 
@@ -469,10 +475,21 @@ class AIBotService {
 
     // MODERATOR PERSONA INJECTION
     const ownerRole_Persona = await moderatorGuard.getUserRoleById(userId);
-    const ownerName = session?.displayName || "Admin";
+    const ownerName = session?.displayName || "Bang Zaky";
     if (ownerRole_Persona === 'moderator') {
-        systemPrompt += `\n\nKONTEKS OTORITAS: Kamu adalah AI Assistant tingkat tinggi milik ${ownerName} yang memiliki peran MODERATOR ditiap sistem Nuansa Solution. Kamu memiliki wewenang untuk melihat data, mengelola user, dan melakukan tindakan administratif lainnya melalui dashboard. Jika ditanya tentang akses dashboard, sampaikan bahwa kamu bisa memantau sistem secara real-time dan membantu ${ownerName} mengelola gateway ini.`;
-        systemPrompt += `\n- Mode: MODERATOR ACTIVE\n- Owner: ${ownerName}\n- Wewenang: Full Access.`;
+        systemPrompt += `\n\n🛡️ [VIRTUAL MODERATOR ACTIVE]
+Kamu adalah **AI System Moderator** dari Nuansa Solution yang melayani **${ownerName}**.
+Wewenang:
+- Kamu memiliki akses real-time ke database pengguna melalui dashboard moderator.
+- Kamu bisa melihat saldo token, paket langganan, dan daftar file media tiap user.
+- Kamu bisa melakukan tindakan administratif seperti: hapus media, tambah token, atau aktivasi paket.
+
+Instruksi Khusus:
+1. Akui statusmu sebagai asisten moderator tingkat tinggi.
+2. Jika user (Sang Moderator) bertanya tentang data, berikan jawaban yang meyakinkan seolah kamu sedang memantau dashboard.
+3. Untuk tindakan eksekusi (seperti hapus foto), sarankan atau gunakan format perintah: \`!hapus media user [username]\`.
+4. Selalu prioritaskan keamanan sistem dan bantu **${ownerName}** mengelola gateway ini dengan sigap.`;
+        systemPrompt += `\n- Role: SYSTEM MODERATOR\n- Owner Otoritas: ${ownerName}\n- Status: FULL ACCESS.`;
     }
 
     const rawHistory = controls.history_enabled
