@@ -53,6 +53,13 @@ class ModeratorBotService {
         const parsedCommand = await parseCommand(messageText);
 
         if (parsedCommand.action === 'unknown') {
+            // FALLBACK TO AI: If it's natural language, let the AI handle it with moderator persona
+            // but we don't return 404/unknown immediately if it looks like a question
+            if (messageText.length > 3 && !messageText.startsWith('!')) {
+                const aiBot = require('../ai/aiBot.service');
+                return await aiBot.processNormalMessage(sessionId, socket, msg);
+            }
+
             await socket.sendMessage(remoteJid, {
                 text: `❓ *Perintah Tidak Dikenali*\n\nSaya tidak bisa memahami perintah: "${messageText}"\n\n${getAvailableCommands()}`
             });

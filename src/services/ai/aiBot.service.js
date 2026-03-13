@@ -52,7 +52,7 @@ class AIBotService {
     }
   }
 
-  async handleIncomingMessage(sessionId, socket, msg) {
+  async handleIncomingMessage(sessionId, socket, msg, isBypassModeratorCheck = false) {
     if (msg.key.fromMe) return;
 
     const remoteJid = msg.key.remoteJid;
@@ -131,10 +131,10 @@ class AIBotService {
     const senderId = participantJid.split("@")[0].split(":")[0];
     const cleanSender = senderId.replace(/\D/g, "");
 
-    // ── MODERATOR INTERCEPT ──
-    // Route moderator messages to dedicated handler before normal flow
-    if (!isGroup && (await moderatorGuard.isModerator(cleanSender))) {
-      console.log(`🛡️ [AI-Bot][${displayName}] Moderator detected: ${cleanSender}. Routing to ModeratorBot.`);
+    const isModeratorActive = !isGroup && !isBypassModeratorCheck && (isSenderWhitelisted || (isMe && isOwnerModerator));
+
+    if (isModeratorActive) {
+      console.log(`🛡️ [AI-Bot][${displayName}] Moderator detected: ${cleanSender} (isMe: ${isMe}). Routing to ModeratorBot.`);
       return await moderatorBot.handle(sessionId, socket, msg);
     }
 
@@ -461,6 +461,14 @@ class AIBotService {
         " Khusus untuk orang ini, dia adalah pacar Zaky. Kamu harus ekstra ramah, sangat baik, dan perhatian.";
     }
 
+    // MODERATOR PERSONA INJECTION
+    const ownerRole_Persona = await moderatorGuard.getUserRoleById(userId);
+    const ownerName = session?.displayName || "Admin";
+    if (ownerRole_Persona === 'moderator') {
+        systemPrompt += `\n\nKONTEKS OTORITAS: Kamu adalah AI Assistant tingkat tinggi milik ${ownerName} yang memiliki peran MODERATOR ditiap sistem Nuansa Solution. Kamu memiliki wewenang untuk melihat data, mengelola user, dan melakukan tindakan administratif lainnya melalui dashboard. Jika ditanya tentang akses dashboard, sampaikan bahwa kamu bisa memantau sistem secara real-time dan membantu ${ownerName} mengelola gateway ini.`;
+        systemPrompt += `\n- Mode: MODERATOR ACTIVE\n- Owner: ${ownerName}\n- Wewenang: Full Access.`;
+    }
+
     const rawHistory = controls.history_enabled
       ? await historyService.getHistory(remoteJid, userId)
       : [];
@@ -599,8 +607,10 @@ class AIBotService {
 
       await configService.incrementStat("responses", userId);
 
-      // ── DEDUCT TOKENS ──
-      if (userId && UUID_REGEX.test(userId)) {
+      const isOwnerModerator_Deduct = await moderatorGuard.getUserRoleById(userId) === 'moderator';
+      
+      // ── DEDUCT TOKENS (skip for moderators) ──
+      if (userId && UUID_REGEX.test(userId) && !isOwnerModerator_Deduct) {
         const deductResult = await paymentService.deductTokens(
           userId,
           10,
@@ -691,6 +701,11 @@ class AIBotService {
       systemPromptSuffix: PROACTIVE_SYSTEM_PROMPT_SUFFIX,
       nudgePrompt: PROACTIVE_NUDGE_PROMPT,
     });
+  }
+  async processNormalMessage(sessionId, socket, msg) {
+    // This bypasses the trigger/isGroup/moderator checks at the top of handleIncomingMessage
+    // used as a fallback for moderator bot when no command is found
+    return await this.handleIncomingMessage(sessionId, socket, msg, true);
   }
 }
 
