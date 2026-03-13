@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const commandExecutor = require('../services/moderator/commandExecutor');
 
 /**
  * Moderator Controller
@@ -100,26 +101,34 @@ async function getStats(req, res) {
     }
 }
 
-// GET /api/moderator/role/:phone
-async function getUserRole(req, res) {
+// POST /api/moderator/execute
+async function executeManualCommand(req, res) {
     try {
-        let phone = req.params.phone.replace(/\D/g, '');
-        if (phone.startsWith('0')) phone = '62' + phone.substring(1);
+        const { action, target, params } = req.body;
+        const moderatorIdentifier = 'DASHBOARD_UI'; // Traceable ID for UI actions
 
-        const { data, error } = await supabase
-            .from('users')
-            .select('role')
-            .eq('phone', phone)
-            .maybeSingle();
+        console.log(`📡 [ModeratorController] Manual execution: ${action} for`, target);
 
-        if (error) throw error;
-        
-        const role = data?.role || 'user';
-        res.json({ role });
+        // 1. Execute using existing executor
+        const executionResult = await commandExecutor.executeCommand({ action, target, params });
+
+        // 2. Log the action manually since it didn't come through WhatsApp bot
+        await supabase.from('moderator_logs').insert({
+            moderator_phone: moderatorIdentifier,
+            raw_command: `[UI] ${action} (${JSON.stringify(params)})`,
+            parsed_action: action,
+            target_identifier: target.phone || target.username || target.id,
+            status: executionResult.success ? 'success' : 'failed',
+            result_summary: executionResult.result,
+            executed_at: new Date().toISOString()
+        });
+
+        res.json(executionResult);
+
     } catch (err) {
-        console.error(`[ModeratorController] getUserRole error:`, err.message);
-        res.json({ role: 'user', error: err.message });
+        console.error(`[ModeratorController] executeManualCommand error:`, err.message);
+        res.status(500).json({ success: false, error: err.message });
     }
 }
 
-module.exports = { getUsers, getLogs, getStats, getUserRole };
+module.exports = { getUsers, getLogs, getStats, getUserRole, executeManualCommand };

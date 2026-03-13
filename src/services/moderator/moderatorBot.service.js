@@ -1,7 +1,8 @@
 const supabase = require('../../config/supabase');
-const { parseCommand } = require('./commandParser');
+const { parseCommand, parseCommandStatic } = require('./commandParser');
 const { validateCommand, getAvailableCommands } = require('./commandValidator');
 const { executeCommand } = require('./commandExecutor');
+const staticResponses = require('./staticResponses');
 const logService = require('../common/log.service');
 
 /**
@@ -37,7 +38,7 @@ class ModeratorBotService {
         // ── CHECK FOR HELP COMMAND ──
         if (lowerText === 'help' || lowerText === 'bantuan' || lowerText === '/help') {
             await socket.sendMessage(remoteJid, {
-                text: `🛡️ *AI Moderator System*\n\n${getAvailableCommands()}\n\n💡 Ketik perintah dalam bahasa natural (ID/EN).`
+                text: staticResponses.getHelpMenu()
             });
             return;
         }
@@ -48,22 +49,18 @@ class ModeratorBotService {
             return;
         }
 
-        // ── STEP 1: PARSE COMMAND ──
-        await socket.sendPresenceUpdate('composing', remoteJid);
-        const parsedCommand = await parseCommand(messageText);
+        // ── STEP 1: PARSE COMMAND (STATIC FIRST) ──
+        // Moderators used pure System Logic now, no AI overhead.
+        const parsedCommand = parseCommandStatic(messageText);
 
         if (parsedCommand.action === 'unknown') {
-            // FALLBACK TO AI: If it's natural language, let the AI handle it with moderator persona
-            // but we don't return 404/unknown immediately if it looks like a question
-            if (messageText.length > 3 && !messageText.startsWith('!')) {
-                const aiBot = require('../ai/aiBot.service');
-                return await aiBot.processNormalMessage(sessionId, socket, msg);
-            }
-
-            await socket.sendMessage(remoteJid, {
-                text: `❓ *Perintah Tidak Dikenali*\n\nSaya tidak bisa memahami perintah: "${messageText}"\n\n${getAvailableCommands()}`
-            });
-            await this._logAction(senderPhone, messageText, 'unknown', null, 'failed', 'Perintah tidak dikenali');
+            // PURE SYSTEM RESPONSES (No AI fallback)
+            const response = staticResponses.getResponse(messageText);
+            
+            await socket.sendMessage(remoteJid, { text: response });
+            
+            // Log as interaction (optional)
+            await this._logAction(senderPhone, messageText, 'static_chat', null, 'success', null, 'Static system response sent');
             return;
         }
 
@@ -154,6 +151,27 @@ class ModeratorBotService {
                 `🕐 *Waktu:* ${now}`;
 
             await socket.sendMessage(remoteJid, { text: feedback });
+
+            // ── SEND MEDIA PAYLOAD IF PRESENT ──
+            if (result.mediaPayload) {
+                const { url, type, fileName } = result.mediaPayload;
+                let mediaMessage = {};
+                
+                if (type === 'image') {
+                    mediaMessage = { image: { url }, caption: `📄 Media: ${fileName}` };
+                } else if (type === 'video') {
+                    mediaMessage = { video: { url }, caption: `🎬 Video: ${fileName}` };
+                } else if (type === 'audio') {
+                    mediaMessage = { audio: { url }, mimetype: 'audio/mp4', ptt: false };
+                } else {
+                    mediaMessage = { document: { url }, fileName: fileName, mimetype: 'application/octet-stream' };
+                }
+                
+                if (Object.keys(mediaMessage).length > 0) {
+                    console.log(`📤 [ModeratorBot] Sending media file of type: ${type}`);
+                    await socket.sendMessage(remoteJid, mediaMessage);
+                }
+            }
 
             // ── NOTIFY TARGET USER VIA CS-BOT ──
             if (result.targetUser?.phone) {

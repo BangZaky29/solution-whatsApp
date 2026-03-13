@@ -85,6 +85,43 @@ async function executeDeleteMedia(target, params) {
 }
 
 /**
+ * View media files for a user (returns payload for bot to send)
+ */
+async function executeViewMedia(target, params) {
+    const user = await resolveUser(target);
+    if (!user) return { success: false, result: '❌ User tidak ditemukan.' };
+
+    const mediaType = params.mediaType || 'image'; // default to image if not specified
+    let query = supabase.from('wa_media').select('*').eq('user_id', user.id);
+    
+    // Filter by type if specific (image/video/audio)
+    if (mediaType !== 'all') {
+        query = query.ilike('file_type', `%${mediaType}%`);
+    }
+
+    // Get the latest one if multiple
+    const { data: mediaFiles, error: fetchError } = await query.order('created_at', { ascending: false }).limit(1);
+
+    if (fetchError) return { success: false, result: `❌ Gagal mengambil data media: ${fetchError.message}` };
+    if (!mediaFiles || mediaFiles.length === 0) {
+        return { success: true, result: `📂 Tidak ada media (${mediaType}) yang ditemukan untuk user ${user.username || user.phone}.`, targetUser: user };
+    }
+
+    const media = mediaFiles[0];
+
+    return {
+        success: true,
+        result: `📸 Mengambil ${media.file_type} terbaru untuk user *${user.full_name || user.username}*...`,
+        mediaPayload: {
+            url: media.public_url,
+            type: media.file_type, // image, video, audio
+            fileName: media.file_name
+        },
+        targetUser: user
+    };
+}
+
+/**
  * Activate a package for a user
  */
 async function executeActivatePackage(target, params) {
@@ -393,6 +430,8 @@ async function executeCommand(parsedCommand) {
         switch (action) {
             case 'delete_media':
                 return await executeDeleteMedia(target, params);
+            case 'view_media':
+                return await executeViewMedia(target, params);
             case 'activate_package':
                 return await executeActivatePackage(target, params);
             case 'add_tokens':
@@ -409,6 +448,12 @@ async function executeCommand(parsedCommand) {
                 return await executeToggleBot(target, false);
             case 'activate_bot':
                 return await executeToggleBot(target, true);
+            case 'delete_account':
+                return { success: false, result: '🚫 AKSES DITOLAK: Penghapusan akun secara massal atau individual dilarang melalui AI untuk alasan keamanan data.' };
+            case 'change_password':
+                return { success: false, result: '🚫 AKSES DITOLAK: Perubahan password user harus dilakukan melalui prosedur otentikasi resmi, bukan via moderator chat.' };
+            case 'change_role':
+                return { success: false, result: '🚫 AKSES DITOLAK: Perubahan role user tingkat tinggi (Moderator/Admin) hanya bisa dilakukan melalui Dashboard Web Utama.' };
             default:
                 return { success: false, result: `❌ Action "${action}" tidak dikenali.` };
         }

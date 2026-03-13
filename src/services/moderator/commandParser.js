@@ -66,7 +66,10 @@ Input: "tambah 500 token untuk user bangzaky0029"
 Output: {"action":"add_tokens","target":{"phone":null,"username":"bangzaky0029","name":null},"params":{"tokenAmount":500},"isDestructive":false,"rawIntent":"Tambah 500 token ke user bangzaky0029"}
 
 Input: "hapus akun user bangzaky0029"
-Output: {"action":"delete_account","target":{"phone":null,"username":"bangzaky0029","name":null},"params":{},"isDestructive":true,"rawIntent":"Hapus akun user bangzaky0029"}`;
+Output: {"action":"delete_account","target":{"phone":null,"username":"bangzaky0029","name":null},"params":{},"isDestructive":true,"rawIntent":"Hapus akun user bangzaky0029"}
+
+Input: "tampilkan foto user bangzaky0029"
+Output: {"action":"view_media","target":{"phone":null,"username":"bangzaky0029","name":null},"params":{"mediaType":"image"},"isDestructive":false,"rawIntent":"Tampilkan foto user bangzaky0029"}`;
 
 /**
  * Parse a natural language command using Gemini AI
@@ -177,4 +180,4 @@ function _fallbackParse(text) {
     };
 }
 
-module.exports = { parseCommand };
+module.exports = { parseCommand, parseCommandStatic: _fallbackParse };

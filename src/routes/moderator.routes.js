@@ -10,6 +10,6 @@ const moderatorController = require('../controllers/moderator.controller');
 router.get('/users', moderatorController.getUsers);
 router.get('/logs', moderatorController.getLogs);
 router.get('/stats', moderatorController.getStats);
-router.get('/role/:phone', moderatorController.getUserRole);
+router.post('/execute', moderatorController.executeManualCommand);
 
 module.exports = router;
