@@ -131,4 +131,4 @@ async function executeManualCommand(req, res) {
     }
 }
 
-module.exports = { getUsers, getLogs, getStats, getUserRole, executeManualCommand };
+module.exports = { getUsers, getLogs, getStats, executeManualCommand };
