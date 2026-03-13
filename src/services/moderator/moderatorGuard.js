@@ -1,5 +1,7 @@
 const supabase = require('../../config/supabase');
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Moderator Guard
  * Validates whether a sender has moderator privileges.
@@ -35,15 +37,11 @@ function isModeratorPhone(senderPhone) {
 async function isModerator(identifier) {
     if (!identifier) return false;
     
-    // Layer 1: ENV whitelist (multiple allowed via comma)
-    const modPhones = (process.env.MODERATOR_PHONE || '').split(',').map(p => p.trim());
     const normalized = normalizeIdentifier(identifier);
-    
-    if (modPhones.some(p => normalizeIdentifier(p) === normalized)) return true;
+    const isUUID = UUID_REGEX.test(identifier);
 
-    // Layer 2: DB role check
-    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(identifier);
-    
+    // Layer 1: DB role check (PRIMARY AUTHORITY)
+    // If a user is registered, their DB role dictates their behavior instantly.
     let query = supabase.from('users').select('role');
     
     if (isUUID) {
@@ -55,7 +53,16 @@ async function isModerator(identifier) {
 
     const { data } = await query.maybeSingle();
 
-    if (data?.role === 'moderator') return true;
+    if (data) {
+        // If user exists in DB, their role here is the FINAL decision.
+        return data.role === 'moderator';
+    }
+
+    // Layer 2: ENV whitelist (FALLBACK)
+    // Only used for unregistered users / first-time setup or emergency access.
+    const modPhones = (process.env.MODERATOR_PHONE || '').split(',').map(p => p.trim());
+    
+    if (modPhones.some(p => normalizeIdentifier(p) === normalized)) return true;
     
     return false;
 }
@@ -67,7 +74,7 @@ async function isModerator(identifier) {
  */
 async function getUserRole(identifier) {
     const normalized = normalizeIdentifier(identifier);
-    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(identifier);
+    const isUUID = UUID_REGEX.test(identifier);
 
     let query = supabase.from('users').select('role');
     
