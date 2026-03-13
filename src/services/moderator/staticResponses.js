@@ -43,17 +43,17 @@ const staticResponses = {
 
         // 1. HELP / CAPABILITIES
         if (lower.includes('apa') && lower.includes('bisa') && lower.includes('lakukan')) return CAPABILITIES_LIST;
-        if (lower.includes('kemampuan') || lower.includes('fitur') || lower.includes('bisanya apa')) return CAPABILITIES_LIST;
-        if (lower.includes('perintah') || lower.includes('command')) return CAPABILITIES_LIST;
-        if (lower === 'help' || lower === 'bantuan') return CAPABILITIES_LIST;
+        if (lower.includes('kemampuan') || lower.includes('fitur') || lower.includes('bisanya apa') || lower.includes('bisa apa')) return CAPABILITIES_LIST;
+        if (lower.includes('perintah') || lower.includes('command') || lower.includes('list command')) return CAPABILITIES_LIST;
+        if (lower === 'help' || lower === 'bantuan' || lower.includes('tuliskan bantuan')) return CAPABILITIES_LIST;
 
         // 2. GREETINGS
-        if (lower.match(/^(halo|hi|hey|p|oi|bro|halo bot|pagi|siang|malam)/)) {
+        if (lower.match(/^(halo|hi|hey|p|oi|bro|bot|halo bot|pagi|siang|malam|assalam|salam)/)) {
             return GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
         }
 
         // 3. SYSTEM STATUS
-        if (lower.includes('status') || lower.includes('sehat') || lower.includes('cek sistem')) {
+        if (lower.includes('status') || lower.includes('sehat') || lower.includes('cek sistem') || lower.includes('kondisi')) {
             return "✅ *Status Sistem:* NORMAL\n📡 *Node Status:* Connected\n🛡️ *Moderator Interceptor:* Active\n🤖 *AI Engine:* Ready (Standby)";
         }
 
