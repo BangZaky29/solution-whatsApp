@@ -49,7 +49,8 @@ async function isModerator(identifier) {
     if (isUUID) {
         query = query.eq('id', identifier);
     } else {
-        query = query.eq('phone', normalized);
+        // Check both phone (normalized) and username (original)
+        query = query.or(`phone.eq.${normalized},username.eq.${identifier}`);
     }
 
     const { data } = await query.maybeSingle();
@@ -73,7 +74,8 @@ async function getUserRole(identifier) {
     if (isUUID) {
         query = query.eq('id', identifier);
     } else {
-        query = query.eq('phone', normalized);
+        // Check both phone (normalized) and username (original)
+        query = query.or(`phone.eq.${normalized},username.eq.${identifier}`);
     }
 
     const { data } = await query.maybeSingle();

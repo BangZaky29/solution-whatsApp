@@ -131,4 +131,19 @@ async function executeManualCommand(req, res) {
     }
 }
 
-module.exports = { getUsers, getLogs, getStats, executeManualCommand };
+// GET /api/moderator/role/:phone
+async function getUserRole(req, res) {
+    try {
+        const { phone } = req.params;
+        const moderatorGuard = require('../services/moderator/moderatorGuard');
+        
+        // Checks both ENV whitelist and DB role
+        const isMod = await moderatorGuard.isModerator(phone);
+        res.json({ role: isMod ? 'moderator' : 'user' });
+    } catch (err) {
+        console.error(`[ModeratorController] getUserRole error:`, err.message);
+        res.status(500).json({ error: err.message });
+    }
+}
+
+module.exports = { getUsers, getLogs, getStats, getUserRole, executeManualCommand };
