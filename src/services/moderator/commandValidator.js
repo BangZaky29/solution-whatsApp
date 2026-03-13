@@ -131,18 +131,31 @@ function validateCommand(parsedCommand) {
  * Get list of available commands for help message
  */
 function getAvailableCommands() {
-    return `📋 *Daftar Perintah Moderator:*
+    return `🛡️ *PANDUAN SISTEM MODERATOR*
 
-✅ *tampilkan foto* user [nama/nomor] — Lihat foto terbaru user
-✅ *hapus media* user [nama/nomor] — Hapus media dari cloud
-✅ *aktifkan paket* [nama_paket] untuk [nama/nomor] — Aktifkan paket premium
-✅ *tambah [jumlah] token* untuk [nama/nomor] — Tambah token
-✅ *reset token* [nama/nomor] jadi [jumlah] — Reset token balance
-✅ *info user* [nama/nomor] — Lihat info user
-✅ *blokir kontak* [kontak] dari [user] — Blokir kontak
-✅ *daftar user* — Tampilkan semua user
-✅ *nonaktifkan bot* [nama/nomor] — Nonaktifkan bot user
-✅ *aktifkan bot* [nama/nomor] — Aktifkan bot user`;
+Saya adalah **System Bot** (Non-AI). Berikut daftar lengkap perintah yang bisa saya lakukan:
+
+💰 *TOKEN & PAKET*
+• \`tambah token user [ID] [jumlah]\`
+• \`reset token user [ID] jadi [jumlah]\`
+• \`kosongkan token user [ID]\` (Set saldo ke 0)
+• \`aktifkan paket [premium/pro/basic] user [ID]\`
+
+📸 *MEDIA & DATA*
+• \`tampilkan foto user [ID]\` (Kirim file media terbaru)
+• \`hapus media user [ID]\` (Hapus dari cloud storage)
+• \`info user [ID]\` (Lihat profil, sisa token, & paket)
+• \`daftar user\` (Lihat 20 user terbaru sistem)
+
+⚙️ *KONTROL BOT*
+• \`matikan bot user [ID]\`
+• \`aktifkan bot user [ID]\`
+• \`blokir kontak [nomor_kontak] dari [ID_user]\`
+
+💡 *TIPS CEPAT*
+- Lu bisa ngetik santai (tanpa "!"): _"reset bangzaky"_
+- [ID] bisa berupa **Username** atau **Nomor WA**.
+- Media dikirim sebagai *file asli* (bukan link).`;
 }
 
 module.exports = {

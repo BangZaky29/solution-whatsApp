@@ -9,29 +9,31 @@ const GREETINGS = [
     "System Online. Menunggu perintah dari moderator...",
 ];
 
-const CAPABILITIES_LIST = `🛡️ *KEMAMPUAN SISTEM MODERATOR*
+const CAPABILITIES_LIST = `🛡️ *PANDUAN SISTEM MODERATOR*
 
-Saya adalah **System Bot** murni (Non-AI). Berikut yang bisa saya lakukan:
+Saya adalah **System Bot** (Non-AI). Berikut daftar lengkap perintah yang bisa saya lakukan:
 
 💰 *TOKEN & PAKET*
-• \`tambah token user [ID/Phone] [jumlah]\`
-• \`reset token user [ID/Phone]\`
-• \`aktifkan paket [basic/standard/premium] user [ID/Phone]\`
+• \`tambah token user [ID] [jumlah]\`
+• \`reset token user [ID] jadi [jumlah]\`
+• \`kosongkan token user [ID]\` (Set saldo ke 0)
+• \`aktifkan paket [premium/pro/basic] user [ID]\`
 
 📸 *MEDIA & DATA*
-• \`tampilkan foto user [ID/Phone]\`
-• \`hapus media user [ID/Phone]\`
-• \`info user [ID/Phone]\` (Lihat profil detail)
+• \`tampilkan foto user [ID]\` (Kirim file media terbaru)
+• \`hapus media user [ID]\` (Hapus dari cloud storage)
+• \`info user [ID]\` (Lihat profil, sisa token, & paket)
+• \`daftar user\` (Lihat 20 user terbaru sistem)
 
-⚙️ *KONTROL*
-• \`matikan bot user [ID/Phone]\`
-• \`aktifkan bot user [ID/Phone]\`
-• \`blokir kontak [nomor]\`
+⚙️ *KONTROL BOT*
+• \`matikan bot user [ID]\`
+• \`aktifkan bot user [ID]\`
+• \`blokir kontak [nomor_kontak] dari [ID_user]\`
 
-💡 *TIPS*
-- Ketik perintah langsung dalam bahasa natural.
-- Awalan "!" bersifat *opsional* (boleh dipakai, boleh tidak).
-- Contoh: _"tampilkan foto bangzaky"_ atau _"!reset bangzaky"_`;
+💡 *TIPS CEPAT*
+- Lu bisa ngetik santai (tanpa "!"): _"reset bangzaky"_
+- [ID] bisa berupa **Username** atau **Nomor WA**.
+- Media dikirim sebagai *file asli* (bukan link).`;
 
 const staticResponses = {
     /**
@@ -68,7 +70,7 @@ const staticResponses = {
         }
 
         // 4. FALLBACK DEFAULT
-        return `⚠️ *Instruksi Tidak Jelas*\n\nSaya tidak memahami instruksi Anda. Gunakan perintah spesifik atau ketik *help* untuk melihat daftar kemampuan.\n\n${CAPABILITIES_LIST}`;
+        return `⚠️ *Instruksi Tidak Jelas*\n\nSaya tidak memahami instruksi Anda. Gunakan perintah spesifik atau ketik *help* untuk melihat daftar kemampuan.`;
     },
 
     getHelpMenu: () => CAPABILITIES_LIST
