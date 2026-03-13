@@ -18,12 +18,13 @@ function normalizeIdentifier(identifier) {
 }
 
 /**
- * Check if a phone number belongs to the env-configured moderator
+ * Check if a phone number belongs to the env-configured moderator list
  */
 function isModeratorPhone(senderPhone) {
-    const modPhone = process.env.MODERATOR_PHONE;
-    if (!modPhone) return false;
-    return normalizeIdentifier(senderPhone) === normalizeIdentifier(modPhone);
+    const modPhones = (process.env.MODERATOR_PHONE || '').split(',').map(p => p.trim());
+    const normalizedSender = normalizeIdentifier(senderPhone);
+    
+    return modPhones.some(p => normalizeIdentifier(p) === normalizedSender);
 }
 
 /**
@@ -34,46 +35,49 @@ function isModeratorPhone(senderPhone) {
 async function isModerator(identifier) {
     if (!identifier) return false;
     
-    // Layer 1: ENV whitelist
-    const modPhone = process.env.MODERATOR_PHONE;
+    // Layer 1: ENV whitelist (multiple allowed via comma)
+    const modPhones = (process.env.MODERATOR_PHONE || '').split(',').map(p => p.trim());
     const normalized = normalizeIdentifier(identifier);
-    if (modPhone && normalized === normalizeIdentifier(modPhone)) return true;
+    
+    if (modPhones.some(p => normalizeIdentifier(p) === normalized)) return true;
 
     // Layer 2: DB role check
-    const { data } = await supabase
-        .from('users')
-        .select('role')
-        .or(`phone.eq.${normalized},id.eq.${identifier}`) // Check phone or UUID/LID matching
-        .maybeSingle();
+    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(identifier);
+    
+    let query = supabase.from('users').select('role');
+    
+    if (isUUID) {
+        query = query.eq('id', identifier);
+    } else {
+        query = query.eq('phone', normalized);
+    }
+
+    const { data } = await query.maybeSingle();
 
     if (data?.role === 'moderator') return true;
     
-    // Special fallback: checking if this normalized string exists in users.phone
-    if (normalized) {
-        const { data: phoneUser } = await supabase
-            .from('users')
-            .select('role')
-            .eq('phone', normalized)
-            .maybeSingle();
-        if (phoneUser?.role === 'moderator') return true;
-    }
-
     return false;
 }
 
 /**
- * Get user role by phone
+ * Get user role by phone/identifier
  * @param {string} phone
  * @returns {Promise<string|null>}
  */
-function getUserRole(identifier) {
+async function getUserRole(identifier) {
     const normalized = normalizeIdentifier(identifier);
-    return supabase
-        .from('users')
-        .select('role')
-        .or(`phone.eq.${normalized},id.eq.${identifier}`)
-        .maybeSingle()
-        .then(({ data }) => data?.role || null);
+    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(identifier);
+
+    let query = supabase.from('users').select('role');
+    
+    if (isUUID) {
+        query = query.eq('id', identifier);
+    } else {
+        query = query.eq('phone', normalized);
+    }
+
+    const { data } = await query.maybeSingle();
+    return data?.role || null;
 }
 
 /**

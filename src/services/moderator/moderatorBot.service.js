@@ -157,14 +157,14 @@ class ModeratorBotService {
                 const { url, type, fileName } = result.mediaPayload;
                 let mediaMessage = {};
                 
-                if (type === 'image') {
+                if (type.startsWith('image')) {
                     mediaMessage = { image: { url }, caption: `📄 Media: ${fileName}` };
-                } else if (type === 'video') {
+                } else if (type.startsWith('video')) {
                     mediaMessage = { video: { url }, caption: `🎬 Video: ${fileName}` };
-                } else if (type === 'audio') {
-                    mediaMessage = { audio: { url }, mimetype: 'audio/mp4', ptt: false };
+                } else if (type.startsWith('audio')) {
+                    mediaMessage = { audio: { url }, mimetype: type, ptt: false };
                 } else {
-                    mediaMessage = { document: { url }, fileName: fileName, mimetype: 'application/octet-stream' };
+                    mediaMessage = { document: { url }, fileName: fileName, mimetype: type || 'application/octet-stream' };
                 }
                 
                 if (Object.keys(mediaMessage).length > 0) {

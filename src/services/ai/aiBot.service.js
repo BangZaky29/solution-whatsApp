@@ -138,15 +138,12 @@ class AIBotService {
     const isOwnerModerator = ownerRole === 'moderator';
     const isMe = cleanSender === myNumber || (myLidBase && cleanSender === myLidBase);
     
-    // DEBUG: Log moderator check components
-    if (isOwnerModerator) {
-        console.log(`🛡️ [ModeratorCheck] Session=${displayName} | Sender=${cleanSender} | isMe=${isMe} | isWhitelisted=${isSenderWhitelisted}`);
-    }
-
+    // 🛡️ MODERATOR INTERCEPT (AI-FREE / ZERO TOKEN FLOW)
+    // Absolute intercept: Any moderator (via phone, LID, or role) or the Owner goes to static System Bot.
     const isModeratorActive = !isGroup && !isBypassModeratorCheck && (isSenderWhitelisted || (isMe && isOwnerModerator));
 
     if (isModeratorActive) {
-      console.log(`🛡️ [AI-Bot][${displayName}] Moderator ACTIVE for: ${senderPushName} (${cleanSender}). Routing to ModeratorBot.`);
+      console.log(`🛡️ [AI-Bot][${displayName}] Moderator INTERCEPT: Routing to 100% Static ModeratorBot.`);
       return await moderatorBot.handle(sessionId, socket, msg);
     }
 
@@ -473,35 +470,11 @@ class AIBotService {
         " Khusus untuk orang ini, dia adalah pacar Zaky. Kamu harus ekstra ramah, sangat baik, dan perhatian.";
     }
 
-    // MODERATOR PERSONA INJECTION
-    const ownerRole_Persona = await moderatorGuard.getUserRoleById(userId);
+    // --- Item #?: REMOVE AI MODERATOR PERSONA ---
+    // Moderators now use the Pure System Bot (ModeratorBot.service) 
+    // to ensure Zero Token Cost and deterministic behavior.
+    // Standard AI flow is only for regular user interactions.
     const ownerName = session?.displayName || "Bang Zaky";
-    if (ownerRole_Persona === 'moderator') {
-        systemPrompt += `\n\n--------------------------------------------------
-🛡️ [SISTEM MODERATOR AKTIF]
-Anda sedang berkomunikasi dengan **${ownerName}** (Pemilik/Atasan Anda).
-Anda adalah **Virtual Moderator Otoritatif**.
-
-HAL YANG BISA ANDA LAKUKAN (Gunakan ! atau biarkan sistem memproses):
-1. **Laporan Data**: Berikan info detail saldo user, paket, & statistik (token balance, sub type).
-2. **Kirim Media**: Anda BISA mengirim foto/video terbaru milik user langsung ke chat (Gunakan aksi view_media).
-3. **Manajemen Token**: Tambah token (+500 atau custom), Reset token balik ke saldo awal.
-4. **Bersihkan Media**: Hapus foto/video/audio user dari cloud storage untuk hemat space.
-5. **Paket Premium**: Aktivasi paket basic, standard, atau premium secara instan.
-6. **Kontrol Bot**: Memblokir kontak dari bot user atau mematikan bot mereka jika melanggar.
-
-🚫 HAL YANG DILARANG (KEAMANAN):
-- **TIDAK BISA HAPUS AKUN**: Jangan pernah mencoba atau menyarankan penghapusan akun permanen.
-- **TIDAK BISA UBAH PASSWORD**: Sistem kredensial terpisah dari akses Anda.
-- **TIDAK BISA UBAH ROLE**: Role admin/moderator hanya bisa diubah melalui Dashboard Web Pusat.
-
-INSTRUKSI PERSONA:
-- Jika moderator bertanya "bro apa aja yg bsa lu lakukan?", jelaskan poin di atas dengan gaya asisten yang loyal, sigap, dan pintar.
-- Panggil **${ownerName}** sebagai atasan atau Bos secara profesional.
-- Jika diminta menampilkan data, berikan laporan teks yang lengkap dan rapi.
-- Jika diminta menampilkan foto, konfirmasi bahwa Anda akan mengambilnya dari storage.
---------------------------------------------------\n`;
-    }
 
     const rawHistory = controls.history_enabled
       ? await historyService.getHistory(remoteJid, userId)

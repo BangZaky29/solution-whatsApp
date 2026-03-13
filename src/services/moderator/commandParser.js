@@ -143,13 +143,20 @@ function _fallbackParse(text) {
         action = 'activate_package';
     } else if (lower.includes('tambah') && lower.includes('token')) {
         action = 'add_tokens';
-        const numMatch = text.match(/\d+/);
-        if (numMatch) params.tokenAmount = parseInt(numMatch[0]);
-    } else if (lower.includes('reset') && lower.includes('token')) {
+        const numMatch = text.match(/(\d+)/);
+        if (numMatch) params.tokenAmount = parseInt(numMatch[1]);
+    } else if ((lower.includes('reset') || lower.includes('atur ulang')) && lower.includes('token')) {
         action = 'reset_tokens';
-        const numMatch = text.match(/\d+/);
-        if (numMatch) params.tokenAmount = parseInt(numMatch[0]);
-    } else if (lower.includes('info') || lower.includes('lihat')) {
+        const numMatch = text.match(/(\d+)/);
+        if (numMatch) params.tokenAmount = parseInt(numMatch[1]);
+    } else if (lower.includes('lihat') || lower.includes('tampilkan') || lower.includes('kirim')) {
+        if (lower.includes('foto') || lower.includes('media') || lower.includes('video')) {
+            action = 'view_media';
+            params.mediaType = lower.includes('video') ? 'video' : 'image';
+        } else if (lower.includes('info') || lower.includes('data')) {
+            action = 'get_user_info';
+        }
+    } else if (lower.includes('info') || lower.includes('statistik') || lower.includes('detail')) {
         action = 'get_user_info';
     } else if (lower.includes('blokir')) {
         action = 'block_contact';

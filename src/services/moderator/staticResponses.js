@@ -44,16 +44,26 @@ const staticResponses = {
         // 1. HELP / CAPABILITIES
         if (lower.includes('apa') && lower.includes('bisa') && lower.includes('lakukan')) return CAPABILITIES_LIST;
         if (lower.includes('kemampuan') || lower.includes('fitur') || lower.includes('bisanya apa')) return CAPABILITIES_LIST;
+        if (lower.includes('perintah') || lower.includes('command')) return CAPABILITIES_LIST;
         if (lower === 'help' || lower === 'bantuan') return CAPABILITIES_LIST;
 
         // 2. GREETINGS
-        if (lower.match(/^(halo|hi|hey|p|oi|bro|halo bot)/)) {
+        if (lower.match(/^(halo|hi|hey|p|oi|bro|halo bot|pagi|siang|malam)/)) {
             return GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
         }
 
         // 3. SYSTEM STATUS
-        if (lower.includes('status') || lower.includes('sehat')) {
+        if (lower.includes('status') || lower.includes('sehat') || lower.includes('cek sistem')) {
             return "✅ *Status Sistem:* NORMAL\n📡 *Node Status:* Connected\n🛡️ *Moderator Interceptor:* Active\n🤖 *AI Engine:* Ready (Standby)";
+        }
+
+        // 4. MEDIA / DATA PENDING HINTS
+        if ((lower.includes('kirim') || lower.includes('mana')) && (lower.includes('foto') || lower.includes('media'))) {
+            return "📸 *Instruksi Diterima:*\nSaya akan mencari media terbaru di storage. Jika tersedia, akan segera saya kirimkan ke chat ini.\n\n_Pastikan formatnya benar: !tampilkan foto user [username]_";
+        }
+        
+        if (lower.includes('paket') || lower.includes('billing') || lower.includes('langganan')) {
+            return "📦 *Informasi Paket:*\nKetik *!info user [username]* untuk melihat sisa token dan paket aktif user tersebut.";
         }
 
         // 4. FALLBACK DEFAULT
