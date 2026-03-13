@@ -36,8 +36,13 @@ async function removeUserSession(waSessionId) {
 async function getAllUserSessions() {
     try {
         const { data } = await supabase.from(this.userSessionsTable).select('user_id, wa_session_id');
-        // Return wa_session_id primarily, fallback to user_id (which is usually the same for AI bots)
-        return data?.map(s => s.wa_session_id || s.user_id).filter(id => id) || [];
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return data?.map(s => {
+            // Priority: user_id if it's a UUID (stable identifier for users)
+            if (s.user_id && UUID_REGEX.test(s.user_id)) return s.user_id;
+            // Fallback: wa_session_id for system sessions (CS-BOT, etc.)
+            return s.wa_session_id || s.user_id;
+        }).filter(id => id) || [];
     } catch (err) { return []; }
 }
 

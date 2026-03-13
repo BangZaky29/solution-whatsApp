@@ -8,8 +8,11 @@ async function restoreSessions({ configService, connectionService }) {
 
     const uniqueSessions = [...new Set(dbSessions)];
 
-    const singleSessions = uniqueSessions.filter(id => !UUID_REGEX.test(id) && id !== 'wa-bot-ai');
-    const multiSessions = uniqueSessions.filter(id => UUID_REGEX.test(id) || id === 'wa-bot-ai');
+    const singleSessions = uniqueSessions.filter(id => {
+        const isSystem = id === 'CS-BOT' || id === 'main-session' || (!UUID_REGEX.test(id) && !id.startsWith('wa-bot-ai'));
+        return isSystem;
+    });
+    const multiSessions = uniqueSessions.filter(id => UUID_REGEX.test(id) || id.startsWith('wa-bot-ai'));
 
     console.log(`[Boot] Restoring ${uniqueSessions.length} sessions...`);
 
