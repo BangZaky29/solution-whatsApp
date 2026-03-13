@@ -217,7 +217,7 @@ class ModeratorBotService {
             const targetJid = targetUser.phone + '@s.whatsapp.net';
             const actionLabels = {
                 delete_media: '🗑️ Beberapa media Anda telah dihapus dari cloud oleh administrator.',
-                activate_package: '🎉 Paket premium Anda telah diaktifkan oleh administrator!',
+                activate_package: `🎉 Paket *${(parsedCommand.params?.packageName || 'baru').toUpperCase()}* Anda telah diaktifkan oleh administrator!`,
                 add_tokens: '💰 Token telah ditambahkan ke akun Anda oleh administrator.',
                 reset_tokens: '🔄 Saldo token Anda telah direset oleh administrator.',
                 block_contact: '🚫 Sebuah kontak telah diblokir dari bot Anda oleh administrator.',
