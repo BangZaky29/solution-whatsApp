@@ -40,31 +40,44 @@ async function isModerator(identifier) {
     const normalized = normalizeIdentifier(identifier);
     const isUUID = UUID_REGEX.test(identifier);
 
-    // Layer 1: DB role check (PRIMARY AUTHORITY)
-    // If a user is registered, their DB role dictates their behavior instantly.
+    // Layer 1: Direct DB Check
     let query = supabase.from('users').select('role');
-    
     if (isUUID) {
         query = query.eq('id', identifier);
     } else {
-        // Check both phone (normalized) and username (original)
         query = query.or(`phone.eq.${normalized},username.eq.${identifier}`);
     }
-
     const { data } = await query.maybeSingle();
 
     if (data) {
-        // If user exists in DB, their role here is the FINAL decision.
+        // Registered user: follow their role strictly.
         return data.role === 'moderator';
     }
 
-    // Layer 2: ENV whitelist (FALLBACK)
-    // Only used for unregistered users / first-time setup or emergency access.
+    // Layer 2: Whitelist Fallback with Linked Identity Check
     const modPhones = (process.env.MODERATOR_PHONE || '').split(',').map(p => p.trim());
+    const isWhitelisted = modPhones.some(p => normalizeIdentifier(p) === normalized);
     
-    if (modPhones.some(p => normalizeIdentifier(p) === normalized)) return true;
+    if (!isWhitelisted) return false;
+
+    // If whitelisted but not individually in DB, check if ANY other whitelisted identity is in DB as 'user'.
+    // This handles multi-device LIDs that aren't registered yet but are linked to a registered account in .env.
+    const normalizedWhites = modPhones.map(p => normalizeIdentifier(p)).filter(p => p !== normalized);
     
-    return false;
+    if (normalizedWhites.length > 0) {
+        const { data: linkedUsers } = await supabase
+            .from('users')
+            .select('role')
+            .in('phone', normalizedWhites);
+            
+        if (linkedUsers && linkedUsers.length > 0) {
+            // If any linked identity says 'user', then we follow that demotion.
+            const hasDemotedAlias = linkedUsers.some(u => u.role === 'user');
+            if (hasDemotedAlias) return false;
+        }
+    }
+    
+    return true; 
 }
 
 /**
@@ -77,16 +90,28 @@ async function getUserRole(identifier) {
     const isUUID = UUID_REGEX.test(identifier);
 
     let query = supabase.from('users').select('role');
-    
     if (isUUID) {
         query = query.eq('id', identifier);
     } else {
-        // Check both phone (normalized) and username (original)
         query = query.or(`phone.eq.${normalized},username.eq.${identifier}`);
     }
-
     const { data } = await query.maybeSingle();
-    return data?.role || null;
+
+    if (data) return data.role;
+
+    // Fallback: Check whitelist collective
+    const modPhones = (process.env.MODERATOR_PHONE || '').split(',').map(p => p.trim());
+    const isWhitelisted = modPhones.some(p => normalizeIdentifier(p) === normalized);
+    
+    if (!isWhitelisted) return 'user';
+
+    const normalizedWhites = modPhones.map(p => normalizeIdentifier(p)).filter(p => p !== normalized);
+    if (normalizedWhites.length > 0) {
+        const { data: linkedUsers } = await supabase.from('users').select('role').in('phone', normalizedWhites);
+        if (linkedUsers?.some(u => u.role === 'user')) return 'user';
+    }
+    
+    return 'moderator';
 }
 
 /**
