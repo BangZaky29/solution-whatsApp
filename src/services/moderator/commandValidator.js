@@ -91,6 +91,20 @@ function validateCommand(parsedCommand) {
         };
     }
 
+    if (action === 'reset_tokens' && (params?.tokenAmount === undefined || params?.tokenAmount === null)) {
+        return {
+            allowed: false,
+            reason: '🔢 Jumlah token baru harus disebutkan (bisa 0).\nContoh: "reset token bangzaky jadi 100" atau "kosongkan token bangzaky"'
+        };
+    }
+
+    if (action === 'activate_package' && !params?.packageName) {
+        return {
+            allowed: false,
+            reason: '📦 Nama paket harus disebutkan (Basic, Premium, atau Pro).\nContoh: "aktifkan paket premium untuk user bangzaky0029"'
+        };
+    }
+
     // 5. Check for SQL injection patterns
     const rawText = JSON.stringify(parsedCommand).toLowerCase();
     const sqlPatterns = ['drop table', 'delete from', 'truncate', 'alter table', '--', ';--', 'union select'];

@@ -150,27 +150,33 @@ class ModeratorBotService {
                 `⚡ *Latency:* ${latency}ms\n` +
                 `🕐 *Waktu:* ${now}`;
 
-            await socket.sendMessage(remoteJid, { text: feedback });
-
-            // ── SEND MEDIA PAYLOAD IF PRESENT ──
+            // ── IF MEDIA PRESENT, SEND AS ONE MESSAGE ──
             if (result.mediaPayload) {
                 const { url, type, fileName } = result.mediaPayload;
                 let mediaMessage = {};
+                const mime = type || 'application/octet-stream';
                 
-                if (type.startsWith('image')) {
-                    mediaMessage = { image: { url }, caption: `📄 Media: ${fileName}` };
-                } else if (type.startsWith('video')) {
-                    mediaMessage = { video: { url }, caption: `🎬 Video: ${fileName}` };
-                } else if (type.startsWith('audio')) {
-                    mediaMessage = { audio: { url }, mimetype: type, ptt: false };
+                if (mime.startsWith('image/')) {
+                    mediaMessage = { image: { url }, mimetype: mime, caption: feedback };
+                } else if (mime.startsWith('video/')) {
+                    mediaMessage = { video: { url }, mimetype: mime, caption: feedback };
+                } else if (mime.startsWith('audio/')) {
+                    mediaMessage = { audio: { url }, mimetype: mime, ptt: false };
+                    // For audio, we might still send text separately as audio doesn't support captions in all clients
+                    await socket.sendMessage(remoteJid, { text: feedback });
                 } else {
-                    mediaMessage = { document: { url }, fileName: fileName, mimetype: type || 'application/octet-stream' };
+                    mediaMessage = { document: { url }, fileName: fileName, mimetype: mime, caption: feedback };
                 }
                 
                 if (Object.keys(mediaMessage).length > 0) {
-                    console.log(`📤 [ModeratorBot] Sending media file of type: ${type}`);
+                    console.log(`📤 [ModeratorBot] Sending media (${mime}) for ${targetId}`);
                     await socket.sendMessage(remoteJid, mediaMessage);
+                } else {
+                    await socket.sendMessage(remoteJid, { text: feedback });
                 }
+            } else {
+                // Regular text response
+                await socket.sendMessage(remoteJid, { text: feedback });
             }
 
             // ── NOTIFY TARGET USER VIA CS-BOT ──

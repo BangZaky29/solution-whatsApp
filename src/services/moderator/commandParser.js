@@ -124,14 +124,60 @@ async function parseCommand(text) {
  * Basic regex fallback parser when AI is unavailable
  */
 function _fallbackParse(text) {
-    const lower = text.toLowerCase();
+    let lower = text.toLowerCase().trim();
+    if (lower.startsWith('!')) lower = lower.substring(1).trim();
 
     let action = 'unknown';
     const target = { phone: null, username: null, name: null };
     const params = {};
     let isDestructive = false;
 
-    // Detect action
+    // --- Target Extraction First ---
+    // Extract phone number
+    const phoneMatch = text.match(/(?:62|0)\d{9,13}/);
+    if (phoneMatch) target.phone = phoneMatch[0];
+
+    // Extract username
+    const userMatch = text.match(/user\s+([a-zA-Z0-9_.-]+)/i);
+    if (userMatch) {
+        target.username = userMatch[1];
+    } else {
+        const words = lower.split(/\s+/);
+        for (const word of words) {
+            if (word.length >= 6 && /^[a-z0-9_.-]+$/.test(word)) {
+                const keywords = ['tambah', 'token', 'reset', 'hapus', 'media', 'aktif', 'info', 'status', 'kosongkan', 'paket', 'lihat', 'tampil', 'mana', 'kirim', 'cek'];
+                if (!keywords.includes(word)) {
+                    target.username = word;
+                    break;
+                }
+            }
+        }
+    }
+
+    // --- Clean text for parameter extraction (Remove target from text) ---
+    let paramText = lower;
+    if (target.phone) paramText = paramText.replace(target.phone, '');
+    if (target.username) paramText = paramText.replace(target.username.toLowerCase(), '');
+
+    // Extract token amount (search for digits in remaining text)
+    const numMatch = paramText.match(/(\d+)/);
+    if (numMatch) {
+        params.tokenAmount = parseInt(numMatch[1]);
+    } else if (lower.includes('kosongkan')) {
+        // Default to 0 if 'kosongkan' is used without a number
+        params.tokenAmount = 0;
+    }
+
+    // Extract package name
+    const packageKeywords = ['premium', 'standard', 'basic', 'pro'];
+    for (const pkg of packageKeywords) {
+        if (paramText.includes(pkg)) {
+            params.packageName = pkg;
+            break;
+        }
+    }
+
+    // --- Action Detection ---
     if (lower.includes('hapus') && (lower.includes('media') || lower.includes('foto') || lower.includes('video'))) {
         action = 'delete_media';
         isDestructive = true;
@@ -141,58 +187,29 @@ function _fallbackParse(text) {
         isDestructive = true;
     } else if ((lower.includes('aktifkan') || lower.includes('nyalakan')) && lower.includes('paket')) {
         action = 'activate_package';
-    } else if ((lower.includes('tambah') || lower.includes('kasih') || lower.includes('isi')) && lower.includes('token')) {
-        action = 'add_tokens';
-        const numMatch = text.match(/(\d+)/);
-        if (numMatch) params.tokenAmount = parseInt(numMatch[1]);
-    } else if (lower.includes('lihat') || lower.includes('tampilkan') || lower.includes('kirim') || lower.includes('cek')) {
-        if (lower.includes('foto') || lower.includes('media') || lower.includes('video')) {
+    } else if (lower.includes('lihat') || lower.includes('tampil') || lower.includes('kirim') || lower.includes('cek') || lower.includes('mana')) {
+        if (lower.includes('foto') || lower.includes('media') || lower.includes('video') || lower.includes('gambar')) {
             action = 'view_media';
-            params.mediaType = lower.includes('video') ? 'video' : 'image';
+            if (lower.includes('video') || lower.includes('vidio')) params.mediaType = 'video';
+            else if (lower.includes('foto') || lower.includes('gambar')) params.mediaType = 'image';
+            else params.mediaType = 'all';
         } else if (lower.includes('info') || lower.includes('data') || lower.includes('status')) {
             action = 'get_user_info';
         }
-    } else if (lower.includes('info') || lower.includes('statistik') || lower.includes('detail') || lower.includes('cek')) {
+    } else if (lower.includes('info') || lower.includes('statistik') || lower.includes('detail') || lower.includes('profil') || lower.includes('data')) {
         action = 'get_user_info';
     } else if (lower.includes('blokir') || lower.includes('banned')) {
         action = 'block_contact';
-    } else if ((lower.includes('reset') || lower.includes('atur ulang') || lower.includes('kosongkan')) && (lower.includes('token') || target.username || target.phone)) {
+    } else if ((lower.includes('reset') || lower.includes('atur ulang') || lower.includes('kosongkan') || lower.includes('hapus')) && (lower.includes('token') || target.username || target.phone)) {
         action = 'reset_tokens';
-        const numMatch = text.match(/(\d+)/);
-        if (numMatch) params.tokenAmount = parseInt(numMatch[1]);
     } else if ((lower.includes('tambah') || lower.includes('kasih')) && (lower.includes('token') || target.username || target.phone)) {
         action = 'add_tokens';
-        const numMatch = text.match(/(\d+)/);
-        if (numMatch) params.tokenAmount = parseInt(numMatch[1]);
     } else if (lower.includes('daftar') && lower.includes('user')) {
         action = 'list_users';
     } else if ((lower.includes('mati') || lower.includes('nonaktif')) && lower.includes('bot')) {
         action = 'deactivate_bot';
     } else if ((lower.includes('hidup') || lower.includes('aktif') || lower.includes('nyala')) && lower.includes('bot')) {
         action = 'activate_bot';
-    }
-
-    // Extract phone number
-    const phoneMatch = text.match(/(?:62|0)\d{9,13}/);
-    if (phoneMatch) target.phone = phoneMatch[0];
-
-    // Extract username (priority to "user [name]" but fallback to any alphanum word > 5 chars if not a command keyword)
-    const userMatch = text.match(/user\s+([a-zA-Z0-9_.-]+)/i);
-    if (userMatch) {
-        target.username = userMatch[1];
-    } else {
-        // Look for potential username in the string (words that look like usernames)
-        const words = lower.split(/\s+/);
-        for (const word of words) {
-            // If it's alphanumeric, long enough, and doesn't match action keywords
-            if (word.length >= 6 && /^[a-z0-9_.-]+$/.test(word)) {
-                const keywords = ['tambah', 'token', 'reset', 'hapus', 'media', 'aktif', 'info', 'status', 'kosongkan'];
-                if (!keywords.includes(word)) {
-                    target.username = word;
-                    break;
-                }
-            }
-        }
     }
 
     return {

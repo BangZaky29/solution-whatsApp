@@ -3,34 +3,35 @@
  * Purpose: Provide AI-free, zero-token cost responses for moderators.
  */
 
-const CAPABILITIES_LIST = `🛡️ *KEMAMPUAN SISTEM MODERATOR*
-
-Saya adalah *System Bot* murni (Non-AI). Berikut yang bisa saya lakukan:
-
-💰 *TOKEN & PAKET*
-• !tambah token user [ID/Phone] [jumlah]
-• !reset token user [ID/Phone]
-• !aktifkan paket [basic/standard/premium] user [ID/Phone]
-
-📸 *MEDIA & DATA*
-• !tampilkan foto user [ID/Phone]
-• !hapus media user [ID/Phone]
-• !info user [ID/Phone] (Lihat profil detail)
-
-⚙️ *KONTROL*
-• !matikan bot user [ID/Phone]
-• !aktifkan bot user [ID/Phone]
-• !blokir kontak [nomor]
-
-💡 *TIPS*
-- Ketik perintah dengan awalan "!" atau bahasa natural.
-- Jika tidak menggunakan "!", saya tetap akan mencoba mendeteksi maksud Anda.`;
-
 const GREETINGS = [
     "Halo Bos! System Bot siap melayani. Ada yang bisa saya bantu?",
     "Selamat datang di Panel Kontrol, Bos. Apa instruksi selanjutnya?",
     "System Online. Menunggu perintah dari moderator...",
 ];
+
+const CAPABILITIES_LIST = `🛡️ *KEMAMPUAN SISTEM MODERATOR*
+
+Saya adalah **System Bot** murni (Non-AI). Berikut yang bisa saya lakukan:
+
+💰 *TOKEN & PAKET*
+• \`tambah token user [ID/Phone] [jumlah]\`
+• \`reset token user [ID/Phone]\`
+• \`aktifkan paket [basic/standard/premium] user [ID/Phone]\`
+
+📸 *MEDIA & DATA*
+• \`tampilkan foto user [ID/Phone]\`
+• \`hapus media user [ID/Phone]\`
+• \`info user [ID/Phone]\` (Lihat profil detail)
+
+⚙️ *KONTROL*
+• \`matikan bot user [ID/Phone]\`
+• \`aktifkan bot user [ID/Phone]\`
+• \`blokir kontak [nomor]\`
+
+💡 *TIPS*
+- Ketik perintah langsung dalam bahasa natural.
+- Awalan "!" bersifat *opsional* (boleh dipakai, boleh tidak).
+- Contoh: _"tampilkan foto bangzaky"_ atau _"!reset bangzaky"_`;
 
 const staticResponses = {
     /**
