@@ -35,7 +35,8 @@ const WHITELISTED_ACTIONS = new Set([
     'block_contact',
     'list_users',
     'deactivate_bot',
-    'activate_bot'
+    'activate_bot',
+    'view_media'
 ]);
 
 // ─── DESTRUCTIVE ACTIONS ───
@@ -73,7 +74,7 @@ function validateCommand(parsedCommand) {
 
     // 3. Validate target is specified for user-specific actions
     const requiresTarget = ['delete_media', 'activate_package', 'add_tokens', 'reset_tokens',
-                            'get_user_info', 'block_contact', 'deactivate_bot', 'activate_bot'];
+                            'get_user_info', 'block_contact', 'deactivate_bot', 'activate_bot', 'view_media'];
     if (requiresTarget.includes(action)) {
         if (!target?.phone && !target?.username && !target?.name) {
             return {
@@ -132,6 +133,7 @@ function validateCommand(parsedCommand) {
 function getAvailableCommands() {
     return `📋 *Daftar Perintah Moderator:*
 
+✅ *tampilkan foto* user [nama/nomor] — Lihat foto terbaru user
 ✅ *hapus media* user [nama/nomor] — Hapus media dari cloud
 ✅ *aktifkan paket* [nama_paket] untuk [nama/nomor] — Aktifkan paket premium
 ✅ *tambah [jumlah] token* untuk [nama/nomor] — Tambah token
