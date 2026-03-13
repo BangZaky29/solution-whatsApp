@@ -1,4 +1,4 @@
-﻿const { DisconnectReason } = require('@whiskeysockets/baileys');
+const { DisconnectReason } = require('@whiskeysockets/baileys');
 const sessionManager = require('./session.manager');
 const configService = require('../common/config.service');
 const { logger } = require('../../config/logger');
@@ -31,6 +31,13 @@ function registerConnectionUpdateHandler({ socket, sessionData, sessionId, clear
                 // PERSISTENCE: Record success in session registry so it can be restored on boot
                 console.log(`[${sessionData.displayName}] Recording session registry...`);
                 await configService.upsertUserSession(sessionId, socket.user.id);
+
+                // MODERATOR DETECTION: Log if this connection belongs to a moderator
+                const moderatorGuard = require('../moderator/moderatorGuard');
+                const role = await moderatorGuard.getUserRole(sessionData.connectionState.phoneNumber);
+                if (role === 'moderator') {
+                    console.log(`🛡️  [Moderator] Recognition: "${sessionData.displayName}" has MODERATOR privileges.`);
+                }
             }
 
             if (connection === 'close') {
