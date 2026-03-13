@@ -131,6 +131,12 @@ class AIBotService {
     const senderId = participantJid.split("@")[0].split(":")[0];
     const cleanSender = senderId.replace(/\D/g, "");
 
+    // ── MODERATOR INTERCEPT ──
+    const isSenderWhitelisted = await moderatorGuard.isModerator(cleanSender);
+    const ownerRole = await moderatorGuard.getUserRoleById(userId);
+    const isOwnerModerator = ownerRole === 'moderator';
+    const isMe = cleanSender === myNumber || (myLidBase && cleanSender === myLidBase);
+    
     const isModeratorActive = !isGroup && !isBypassModeratorCheck && (isSenderWhitelisted || (isMe && isOwnerModerator));
 
     if (isModeratorActive) {
