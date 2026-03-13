@@ -32,7 +32,7 @@ async function restoreSessions({ configService, connectionService }) {
         for (const sessionId of multiSessions) {
             // Check if this AI bot belongs to a moderator
             const role = await moderatorGuard.getUserRoleById(sessionId);
-            const modLabel = role === 'moderator' ? ' 🛡️ [MODERATOR]' : '';
+            const modLabel = role === 'moderator' ? ' 🛡️ [MODERATOR_ACTIVE]' : '';
             
             console.log(`🚀 [Boot] Restoring AI Session: ${sessionId}${modLabel}`);
             connectionService.connect(sessionId).catch(err =>

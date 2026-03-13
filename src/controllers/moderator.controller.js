@@ -106,15 +106,19 @@ async function getUserRole(req, res) {
         let phone = req.params.phone.replace(/\D/g, '');
         if (phone.startsWith('0')) phone = '62' + phone.substring(1);
 
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('users')
             .select('role')
             .eq('phone', phone)
-            .single();
+            .maybeSingle();
 
-        res.json({ role: data?.role || 'user' });
+        if (error) throw error;
+        
+        const role = data?.role || 'user';
+        res.json({ role });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error(`[ModeratorController] getUserRole error:`, err.message);
+        res.json({ role: 'user', error: err.message });
     }
 }
 

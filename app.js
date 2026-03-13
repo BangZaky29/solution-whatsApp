@@ -119,11 +119,20 @@ async function startServer() {
         process.exit(1);
     }
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
         console.log(`\n${'='.repeat(50)}`);
         console.log(`  WhatsApp Gateway API (Refactored)`);
         console.log(`  🌐 Server: http://localhost:${PORT}`);
         console.log(`${'='.repeat(50)}\n`);
+    });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`\n❌ [Critical] Port ${PORT} is already in use.`);
+            console.error(`👉 Please kill the existing process using: npx kill-port ${PORT}`);
+            console.error(`👉 Or find the process manually and stop it.\n`);
+            process.exit(1);
+        }
     });
 
     await restoreSessions({ configService, connectionService });
