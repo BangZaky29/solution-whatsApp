@@ -68,8 +68,6 @@ class AIBotService {
     // ── LOAD CONTROLS EARLY (feature gating) ──
     const controls = await configService.getAIControls(userId);
     
-    // DEBUG LOG
-    console.log(`🔍 [AI-Bot][Debug] userId: ${userId} (${displayName}) | group_chat_enabled: ${controls.group_chat_enabled}`);
 
     const isGroup = remoteJid.endsWith("@g.us");
     const myJid =
@@ -78,6 +76,9 @@ class AIBotService {
     const myLid = socket.user?.lid || socket.authState?.creds?.me?.lid || "";
     const myLidBase = myLid ? myLid.split(":")[0].split("@")[0] : "";
     const displayName = session?.displayName || sessionId;
+    
+    // DEBUG LOG
+    console.log(`🔍 [AI-Bot][Debug] userId: ${userId} (${displayName}) | group_chat_enabled: ${controls.group_chat_enabled}`);
 
     // ── FEATURE FLAG: GROUP CHAT ──
     if (isGroup && !controls.group_chat_enabled) {

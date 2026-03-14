@@ -1,5 +1,5 @@
 const supabase = require("../../../config/supabase");
-const featuresService = require("../../payment/features.service");
+const paymentService = require("../../payment/payment.service");
 const moderatorGuard = require("../../moderator/moderatorGuard");
 
 async function getUserDisplay(userId) {
@@ -51,7 +51,7 @@ async function getAIControls(userId = null) {
   try {
     const key = `ai_controls:${userId}`;
     const settings = await this.getSetting(key);
-    const userFeatures = await featuresService.getUserFeatures(userId);
+    const userFeatures = await paymentService.getUserFeatures(userId);
     const isModerator = await moderatorGuard.isModerator(userId);
 
     const merged = {
