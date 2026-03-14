@@ -1,4 +1,9 @@
+const moderatorGuard = require('../moderator/moderatorGuard');
+
 async function getUserFeatures(userId) {
+  const role = await moderatorGuard.getUserRoleById(userId);
+  const isAdmin = role === 'moderator';
+
   const sub = await this.getActiveSubscription(userId);
   if (!sub || !sub.packages) {
     // No active subscription -- return minimal/free features
@@ -6,6 +11,7 @@ async function getUserFeatures(userId) {
     const isDev = process.env.NODE_ENV === "development";
 
     return {
+      is_admin: isAdmin,
       has_subscription: false,
       max_prompts: isDev ? 5 : 0,
       max_contacts: isDev ? 10 : 0,
@@ -31,6 +37,7 @@ async function getUserFeatures(userId) {
 
   const features = sub.packages.features || {};
   return {
+    is_admin: isAdmin,
     has_subscription: true,
     max_prompts: features.max_prompts ?? 999,
     max_contacts: features.max_contacts ?? 999,

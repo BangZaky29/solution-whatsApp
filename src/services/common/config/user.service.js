@@ -25,6 +25,8 @@ async function getUserDisplay(userId) {
   }
 }
 
+const moderatorGuard = require("../moderator/moderatorGuard");
+
 async function getAIControls(userId = null) {
   const defaultControls = {
     is_ai_enabled: true,
@@ -50,6 +52,8 @@ async function getAIControls(userId = null) {
     const key = `ai_controls:${userId}`;
     const settings = await this.getSetting(key);
     const userFeatures = await featuresService.getUserFeatures(userId);
+    const role = await moderatorGuard.getUserRoleById(userId);
+    const isModerator = role === 'moderator';
 
     const merged = {
       ...defaultControls,
@@ -57,20 +61,23 @@ async function getAIControls(userId = null) {
     };
 
     // Strict enforcement: Force features to false if not allowed by plan
-    if (!userFeatures.proactive_enabled) {
-      merged.is_proactive_enabled = false;
-    }
-    if (!userFeatures.media_save_enabled) {
-      merged.media_save_to_cloud = false;
-    }
-    if (!userFeatures.media_send_enabled) {
-      merged.media_send_enabled = false;
-    }
-    if (!userFeatures.group_chat_enabled) {
-      merged.group_chat_enabled = false;
-    }
-    if (!userFeatures.group_keyword_trigger) {
-      merged.group_trigger_keyword = false;
+    // BYPASS for moderators: they can use all features
+    if (!isModerator) {
+      if (!userFeatures.proactive_enabled) {
+        merged.is_proactive_enabled = false;
+      }
+      if (!userFeatures.media_save_enabled) {
+        merged.media_save_to_cloud = false;
+      }
+      if (!userFeatures.media_send_enabled) {
+        merged.media_send_enabled = false;
+      }
+      if (!userFeatures.group_chat_enabled) {
+        merged.group_chat_enabled = false;
+      }
+      if (!userFeatures.group_keyword_trigger) {
+        merged.group_trigger_keyword = false;
+      }
     }
 
     return merged;
