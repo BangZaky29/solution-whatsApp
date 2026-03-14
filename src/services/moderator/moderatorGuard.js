@@ -50,14 +50,8 @@ async function isModerator(identifier) {
     const { data } = await query.maybeSingle();
 
     if (data) {
-        // High priority: Explicit moderator role
-        if (data.role === 'moderator') return true;
-        
-        // High priority: Whitelist check for linked phone
-        if (data.phone && isModeratorPhone(data.phone)) return true;
-
-        // If registered as 'user' and not whitelisted, strictly follow DB
-        return false;
+        // DB Role is absolute priority if user is registered
+        return data.role === 'moderator';
     }
 
     // Layer 2: Whitelist Fallback (for unregistered/new sessions)
@@ -88,10 +82,7 @@ async function getUserRole(identifier) {
     const { data } = await query.maybeSingle();
 
     if (data) {
-        if (data.role === 'moderator' || (data.phone && isModeratorPhone(data.phone))) {
-            return 'moderator';
-        }
-        return data.role;
+        return data.role || 'user';
     }
 
     // Fallback: Check whitelist collective
