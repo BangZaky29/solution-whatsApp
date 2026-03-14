@@ -67,6 +67,9 @@ class AIBotService {
 
     // ── LOAD CONTROLS EARLY (feature gating) ──
     const controls = await configService.getAIControls(userId);
+    
+    // DEBUG LOG
+    console.log(`🔍 [AI-Bot][Debug] userId: ${userId} | group_chat_enabled: ${controls.group_chat_enabled}`);
 
     const isGroup = remoteJid.endsWith("@g.us");
     const myJid =
@@ -365,8 +368,8 @@ class AIBotService {
 
     // ── TOKEN ENFORCEMENT (skip for moderators) ──
     if (userId && UUID_REGEX.test(userId)) {
-      const userRole = await moderatorGuard.getUserRoleById(userId);
-      if (userRole === 'moderator') {
+      const isModerator = await moderatorGuard.isModerator(userId);
+      if (isModerator) {
         console.log(
           `🛡️ [AI-Bot][${displayName}] Moderator role detected. Bypassing token/subscription check.`,
         );

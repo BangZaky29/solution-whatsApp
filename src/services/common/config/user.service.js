@@ -1,5 +1,6 @@
 const supabase = require("../../../config/supabase");
 const featuresService = require("../../payment/features.service");
+const moderatorGuard = require("../../moderator/moderatorGuard");
 
 async function getUserDisplay(userId) {
   try {
@@ -25,7 +26,6 @@ async function getUserDisplay(userId) {
   }
 }
 
-const moderatorGuard = require("../../moderator/moderatorGuard");
 
 async function getAIControls(userId = null) {
   const defaultControls = {
@@ -52,8 +52,7 @@ async function getAIControls(userId = null) {
     const key = `ai_controls:${userId}`;
     const settings = await this.getSetting(key);
     const userFeatures = await featuresService.getUserFeatures(userId);
-    const role = await moderatorGuard.getUserRoleById(userId);
-    const isModerator = role === 'moderator';
+    const isModerator = await moderatorGuard.isModerator(userId);
 
     const merged = {
       ...defaultControls,

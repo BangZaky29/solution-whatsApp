@@ -1,8 +1,7 @@
 const moderatorGuard = require('../moderator/moderatorGuard');
 
 async function getUserFeatures(userId) {
-  const role = await moderatorGuard.getUserRoleById(userId);
-  const isAdmin = role === 'moderator';
+  const isAdmin = await moderatorGuard.isModerator(userId);
 
   const sub = await this.getActiveSubscription(userId);
   if (!sub || !sub.packages) {
