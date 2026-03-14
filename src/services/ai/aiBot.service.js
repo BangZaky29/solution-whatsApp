@@ -69,7 +69,7 @@ class AIBotService {
     const controls = await configService.getAIControls(userId);
     
     // DEBUG LOG
-    console.log(`🔍 [AI-Bot][Debug] userId: ${userId} | group_chat_enabled: ${controls.group_chat_enabled}`);
+    console.log(`🔍 [AI-Bot][Debug] userId: ${userId} (${displayName}) | group_chat_enabled: ${controls.group_chat_enabled}`);
 
     const isGroup = remoteJid.endsWith("@g.us");
     const myJid =

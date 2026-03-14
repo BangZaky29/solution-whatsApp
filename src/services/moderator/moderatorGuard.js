@@ -37,11 +37,11 @@ function isModeratorPhone(senderPhone) {
 async function isModerator(identifier) {
     if (!identifier) return false;
     
-    const normalized = normalizeIdentifier(identifier);
     const isUUID = UUID_REGEX.test(identifier);
+    const normalized = isUUID ? '' : normalizeIdentifier(identifier);
 
     // Layer 1: Direct DB Check
-    let query = supabase.from('users').select('role');
+    let query = supabase.from('users').select('role, phone');
     if (isUUID) {
         query = query.eq('id', identifier);
     } else {
@@ -50,34 +50,22 @@ async function isModerator(identifier) {
     const { data } = await query.maybeSingle();
 
     if (data) {
-        // Registered user: follow their role strictly.
-        return data.role === 'moderator';
+        // High priority: Explicit moderator role
+        if (data.role === 'moderator') return true;
+        
+        // High priority: Whitelist check for linked phone
+        if (data.phone && isModeratorPhone(data.phone)) return true;
+
+        // If registered as 'user' and not whitelisted, strictly follow DB
+        return false;
     }
 
-    // Layer 2: Whitelist Fallback with Linked Identity Check
-    const modPhones = (process.env.MODERATOR_PHONE || '').split(',').map(p => p.trim());
-    const isWhitelisted = modPhones.some(p => normalizeIdentifier(p) === normalized);
-    
-    if (!isWhitelisted) return false;
-
-    // If whitelisted but not individually in DB, check if ANY other whitelisted identity is in DB as 'user'.
-    // This handles multi-device LIDs that aren't registered yet but are linked to a registered account in .env.
-    const normalizedWhites = modPhones.map(p => normalizeIdentifier(p)).filter(p => p !== normalized);
-    
-    if (normalizedWhites.length > 0) {
-        const { data: linkedUsers } = await supabase
-            .from('users')
-            .select('role')
-            .in('phone', normalizedWhites);
-            
-        if (linkedUsers && linkedUsers.length > 0) {
-            // If any linked identity says 'user', then we follow that demotion.
-            const hasDemotedAlias = linkedUsers.some(u => u.role === 'user');
-            if (hasDemotedAlias) return false;
-        }
+    // Layer 2: Whitelist Fallback (for unregistered/new sessions)
+    if (!isUUID) {
+        return isModeratorPhone(identifier);
     }
     
-    return true; 
+    return false; 
 }
 
 /**
@@ -86,10 +74,12 @@ async function isModerator(identifier) {
  * @returns {Promise<string|null>}
  */
 async function getUserRole(identifier) {
-    const normalized = normalizeIdentifier(identifier);
-    const isUUID = UUID_REGEX.test(identifier);
+    if (!identifier) return 'user';
 
-    let query = supabase.from('users').select('role');
+    const isUUID = UUID_REGEX.test(identifier);
+    const normalized = isUUID ? '' : normalizeIdentifier(identifier);
+
+    let query = supabase.from('users').select('role, phone');
     if (isUUID) {
         query = query.eq('id', identifier);
     } else {
@@ -97,21 +87,19 @@ async function getUserRole(identifier) {
     }
     const { data } = await query.maybeSingle();
 
-    if (data) return data.role;
+    if (data) {
+        if (data.role === 'moderator' || (data.phone && isModeratorPhone(data.phone))) {
+            return 'moderator';
+        }
+        return data.role;
+    }
 
     // Fallback: Check whitelist collective
-    const modPhones = (process.env.MODERATOR_PHONE || '').split(',').map(p => p.trim());
-    const isWhitelisted = modPhones.some(p => normalizeIdentifier(p) === normalized);
-    
-    if (!isWhitelisted) return 'user';
-
-    const normalizedWhites = modPhones.map(p => normalizeIdentifier(p)).filter(p => p !== normalized);
-    if (normalizedWhites.length > 0) {
-        const { data: linkedUsers } = await supabase.from('users').select('role').in('phone', normalizedWhites);
-        if (linkedUsers?.some(u => u.role === 'user')) return 'user';
+    if (!isUUID && isModeratorPhone(identifier)) {
+        return 'moderator';
     }
     
-    return 'moderator';
+    return 'user';
 }
 
 /**

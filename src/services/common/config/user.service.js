@@ -36,7 +36,7 @@ async function getAIControls(userId = null) {
     media_save_to_cloud: false,
     media_send_enabled: false,
     media_confirm_before_save: true,
-    group_chat_enabled: false,
+    group_chat_enabled: true, // Default to TRUE, gated by plan/moderator status below
     group_trigger_mention: true,
     group_trigger_reply: true,
     group_trigger_keyword: false,
@@ -61,6 +61,8 @@ async function getAIControls(userId = null) {
 
     // Strict enforcement: Force features to false if not allowed by plan
     // BYPASS for moderators: they can use all features
+    console.log(`[getAIControls] userId: ${userId} | isModerator: ${isModerator}`);
+
     if (!isModerator) {
       if (!userFeatures.proactive_enabled) {
         merged.is_proactive_enabled = false;
@@ -79,8 +81,10 @@ async function getAIControls(userId = null) {
       }
     }
 
+    console.log(`[getAIControls] Result for ${userId}: group_chat_enabled=${merged.group_chat_enabled}`);
     return merged;
   } catch (err) {
+    console.error(`[getAIControls] Error:`, err);
     return defaultControls;
   }
 }
