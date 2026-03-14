@@ -1,4 +1,4 @@
-const moderatorGuard = require('../moderator/moderatorGuard');
+const moderatorGuard = require('../../moderator/moderatorGuard');
 
 async function getUserFeatures(userId) {
   const role = await moderatorGuard.getUserRoleById(userId);

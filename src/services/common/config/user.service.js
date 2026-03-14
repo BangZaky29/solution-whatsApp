@@ -25,7 +25,7 @@ async function getUserDisplay(userId) {
   }
 }
 
-const moderatorGuard = require("../moderator/moderatorGuard");
+const moderatorGuard = require("../../../moderator/moderatorGuard");
 
 async function getAIControls(userId = null) {
   const defaultControls = {
