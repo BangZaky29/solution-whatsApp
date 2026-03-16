@@ -514,7 +514,7 @@ class AIBotService {
 
       const aiResponse = await geminiService.generateResponse(
         promptWithMedia,
-        formattedHistory,
+        history,
         systemPrompt,
         {
           apiKey: activeKeyConfig.key,

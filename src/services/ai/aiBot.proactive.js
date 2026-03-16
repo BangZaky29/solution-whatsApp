@@ -1,4 +1,4 @@
-﻿async function checkAndSendProactiveMessage({
+async function checkAndSendProactiveMessage({
   sessionId,
   socket,
   UUID_REGEX,
@@ -71,7 +71,7 @@
 
           const aiResponse = await geminiService.generateResponse(
             nudgePrompt,
-            formattedHistory,
+            history,
             systemPrompt,
             {
               apiKey: activeKeyConfig.key,
