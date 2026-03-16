@@ -87,7 +87,7 @@ class HistoryService {
         if (!history || history.length === 0) return "";
 
         return history.map(h => {
-            const role = h.role === 'user' ? 'Customer' : 'AI Assistant';
+            const role = h.role === 'user' ? 'User' : 'Model';
             let content = h.content;
             if (h.media_url) {
                 content = `[Media ${h.media_type}: ${h.media_url}] ${content || ""}`;

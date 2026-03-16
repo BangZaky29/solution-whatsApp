@@ -483,9 +483,11 @@ class AIBotService {
     const rawHistory = controls.history_enabled
       ? await historyService.getHistory(remoteJid, userId)
       : [];
-    const maxMsgs = controls.history_max_messages || 10;
+    const maxMsgs = controls.history_max_messages || 50; // Increased default from 10 to 50
     const history = rawHistory.slice(-maxMsgs);
     const formattedHistory = historyService.formatForPrompt(history);
+
+    console.log(`📜 [AI-Bot][${displayName}] History found: ${rawHistory.length} msgs. Sending: ${history.length} msgs to context. (Limit: ${maxMsgs})`);
 
     // --- NEW: INJECT MEDIA INFO INTO PROMPT ---
     let promptWithMedia = fullMessageText;
