@@ -59,62 +59,42 @@ async function getAIControls(userId = null) {
       ...(settings || {}),
     };
 
-    // ── STRICT GATING ──
-    // If NOT a moderator, we force features to false if not in the user's package features
+    // ── FEATURE GATING ──
+    const maxPackageMsgs = userFeatures.max_history_messages || 1000;
+
     if (!isModerator) {
-      // 1. Basic AI Access
-      if (!userFeatures.has_subscription && !merged.is_ai_enabled) {
-          // If no sub and user hasn't explicitly enabled it (which they shouldn't be able to easily)
-          // keep it off. But we usually allow is_ai_enabled if they have some prompts left.
-      }
+      // Regular User: Strict enforcement
+      if (!userFeatures.proactive_enabled) merged.is_proactive_enabled = false;
+      if (!userFeatures.media_receive_enabled) merged.media_receive_enabled = false;
+      if (!userFeatures.media_save_enabled) merged.media_save_to_cloud = false;
+      if (!userFeatures.media_send_enabled) merged.media_send_enabled = false;
+      if (!userFeatures.group_chat_enabled) merged.group_chat_enabled = false;
+      if (!userFeatures.group_keyword_trigger) merged.group_trigger_keyword = false;
 
-      // 2. Proactive Features
-      if (!userFeatures.proactive_enabled) {
-        merged.is_proactive_enabled = false;
-      }
-      
-      // 3. Media Features
-      if (!userFeatures.media_receive_enabled) {
-        merged.media_receive_enabled = false;
-      }
-      if (!userFeatures.media_save_enabled) {
-        merged.media_save_to_cloud = false;
-      }
-      if (!userFeatures.media_send_enabled) {
-        merged.media_send_enabled = false;
-      }
-
-      // 4. Group Features
-      if (!userFeatures.group_chat_enabled) {
-        merged.group_chat_enabled = false;
-      }
-      if (!userFeatures.group_keyword_trigger) {
-        merged.group_trigger_keyword = false;
-      }
-
-      // 5. History / Memory
       if (userFeatures.history_retention_days === 0) {
         merged.history_enabled = false;
         merged.history_max_messages = 0;
-      } else {
-        // CAP or INITIALIZE history messages by package limit
-        const maxMsgs = userFeatures.max_history_messages || 1000;
-        if (merged.history_max_messages <= 0) {
-            merged.history_max_messages = 20; // Default small memory if not configured
-        }
-        if (merged.history_max_messages > maxMsgs) {
-            merged.history_max_messages = maxMsgs;
-        }
       }
     } else {
-        // MODERATOR BYPASS: Ensure AI is enabled by default for moderators if not set
-        if (settings === null) {
-            merged.is_ai_enabled = true;
-            merged.group_chat_enabled = true;
-            merged.media_receive_enabled = true;
-            merged.history_enabled = true;
-            merged.history_max_messages = 20;
-        }
+      // Moderator: Explicit bypass for some features if record is fresh
+      if (settings === null) {
+        merged.is_ai_enabled = true;
+        merged.group_chat_enabled = true;
+        merged.media_receive_enabled = true;
+        merged.history_enabled = true;
+      }
+    }
+
+    // ── COMMON HISTORY LIMIT LOGIC ──
+    if (merged.history_enabled) {
+      // If messages limit is unset or too small, default to 100 or package max
+      if (!merged.history_max_messages || merged.history_max_messages < 50) {
+        merged.history_max_messages = Math.min(100, maxPackageMsgs);
+      }
+      // Never exceed package limit
+      if (merged.history_max_messages > maxPackageMsgs) {
+        merged.history_max_messages = maxPackageMsgs;
+      }
     }
 
     console.log(`[getAIControls] Final gating for ${userId}: is_ai=${merged.is_ai_enabled}, group=${merged.group_chat_enabled}`);
