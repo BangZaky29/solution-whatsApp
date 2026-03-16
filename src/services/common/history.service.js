@@ -1,4 +1,4 @@
-﻿const supabase = require('../../config/supabase');
+const supabase = require('../../config/supabase');
 
 /**
  * History Service
@@ -9,7 +9,7 @@ class HistoryService {
         const configService = require('./config.service'); // Note: path might need verification relative to this file
         this.useProduction = configService.useProduction;
         this.tableName = configService.getTableName('wa_chat_history');
-        this.maxHistory = 100;
+        this.maxHistory = 1000;
         this.proactiveLimit = 7;
     }
 

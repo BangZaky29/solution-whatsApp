@@ -30,7 +30,7 @@ async function getUserFeatures(userId) {
       group_chat_enabled: isDev ? true : false,
       group_keyword_trigger: false,
       proactive_config_enabled: false,
-      max_history_messages: isDev ? 20 : 10,
+      max_history_messages: isDev ? 1000 : 1000,
     };
   }
 
@@ -53,7 +53,7 @@ async function getUserFeatures(userId) {
     group_chat_enabled: features.group_chat_enabled ?? false,
     group_keyword_trigger: features.group_trigger_keyword ?? false,
     proactive_config_enabled: features.proactive_config ?? false,
-    max_history_messages: features.max_history_messages ?? 10,
+    max_history_messages: features.max_history_messages ?? 1000,
     package_name: sub.packages.display_name,
     expires_at: sub.expires_at,
   };

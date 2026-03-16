@@ -40,8 +40,8 @@ async function getAIControls(userId = null) {
     group_trigger_mention: false,
     group_trigger_reply: false,
     group_trigger_keyword: false,
-    history_enabled: false,
-    history_max_messages: 0,
+    history_enabled: true,
+    history_max_messages: 100,
     proactive_idle_threshold_mins: 60,
     proactive_max_per_cycle: 1,
   };
@@ -97,8 +97,11 @@ async function getAIControls(userId = null) {
         merged.history_enabled = false;
         merged.history_max_messages = 0;
       } else {
-        // Cap history messages by package limit
-        const maxMsgs = userFeatures.max_history_messages || 10;
+        // CAP or INITIALIZE history messages by package limit
+        const maxMsgs = userFeatures.max_history_messages || 1000;
+        if (merged.history_max_messages <= 0) {
+            merged.history_max_messages = 20; // Default small memory if not configured
+        }
         if (merged.history_max_messages > maxMsgs) {
             merged.history_max_messages = maxMsgs;
         }

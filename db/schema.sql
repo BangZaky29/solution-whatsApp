@@ -173,29 +173,29 @@ CREATE TABLE public.wa_bot_settings (
 );
 CREATE TABLE public.wa_chat_history (
   jid text NOT NULL,
-  push_name text,
-  history jsonb DEFAULT '[]'::jsonb,
-  msg_count integer DEFAULT 0,
-  last_active timestamp with time zone DEFAULT now(),
-  created_at timestamp with time zone DEFAULT now(),
-  proactive_count integer DEFAULT 0,
-  last_sender text,
+  push_name text NULL,
+  history jsonb NULL DEFAULT '[]'::jsonb,
+  msg_count integer NULL DEFAULT 0,
+  last_active timestamp with time zone NULL DEFAULT now(),
+  created_at timestamp with time zone NULL DEFAULT now(),
+  proactive_count integer NULL DEFAULT 0,
+  last_sender text NULL,
   user_id uuid NOT NULL,
   CONSTRAINT wa_chat_history_pkey PRIMARY KEY (jid, user_id),
-  CONSTRAINT wa_chat_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT wa_chat_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 CREATE TABLE public.wa_chat_history_local (
   jid text NOT NULL,
-  push_name text,
-  history jsonb DEFAULT '[]'::jsonb,
-  msg_count integer DEFAULT 0,
-  last_active timestamp with time zone DEFAULT now(),
-  created_at timestamp with time zone DEFAULT now(),
-  proactive_count integer DEFAULT 0,
-  last_sender text,
+  push_name text NULL,
+  history jsonb NULL DEFAULT '[]'::jsonb,
+  msg_count integer NULL DEFAULT 0,
+  last_active timestamp with time zone NULL DEFAULT now(),
+  created_at timestamp with time zone NULL DEFAULT now(),
+  proactive_count integer NULL DEFAULT 0,
+  last_sender text NULL,
   user_id uuid NOT NULL,
   CONSTRAINT wa_chat_history_local_pkey PRIMARY KEY (jid, user_id),
-  CONSTRAINT wa_chat_history_local_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT wa_chat_history_local_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 CREATE TABLE public.wa_media (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
