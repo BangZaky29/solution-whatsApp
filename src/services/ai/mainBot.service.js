@@ -63,41 +63,10 @@ class MainBotService {
         return `WLK-${prefix}-${randomString}`;
     }
 
-    getPlanMetrics(planName) {
-        const lName = planName.toLowerCase();
-        let max_warga = 30;
-        let has_laporan = false;
-        let has_chat = false;
-        let has_panic_button = false;
-
-        if (lName.includes('50.000')) {
-            max_warga = 50;
-            has_laporan = true;
-            has_panic_button = true;
-        } else if (lName.includes('80.000')) {
-            max_warga = 100;
-            has_laporan = true;
-            has_chat = true;
-            has_panic_button = true;
-        } else if (lName.includes('150.000')) {
-            max_warga = 150;
-            has_laporan = true;
-            has_chat = true;
-            has_panic_button = true;
-        } else if (lName.includes('180.000')) {
-            max_warga = 200;
-            has_laporan = true;
-            has_chat = true;
-            has_panic_button = true;
-        }
-
-        return { max_warga, has_laporan, has_chat, has_panic_button };
-    }
-
     async handlePaymentApproval(socket, adminJid, username) {
         console.log(`[Main-Bot] Processing admin approval for user: ${username || 'OLDEST_PENDING'}`);
         try {
-            // 1. Find the pending payment (Case-Insensitive using ilike if username provided, otherwise get oldest)
+            // 1. Find the pending payment
             let query = warlokSupabase
                 .from('warlok_web_payments')
                 .select('*')
@@ -122,8 +91,21 @@ class MainBotService {
             const payment = payments[0];
             const actualUsername = payment.username;
 
-            // 2. Generate limits based on package name
-            const planMetrics = this.getPlanMetrics(payment.package_name);
+            // 2. Fetch plan metrics from database (Dynamic!)
+            const { data: planData, error: planErr } = await warlokSupabase
+                .from('subscription_plans')
+                .select('*')
+                .eq('name', payment.package_name)
+                .single();
+
+            // Fallback limits if plan not found in database
+            const planMetrics = planData || {
+                max_warga: 15,
+                has_laporan: false,
+                has_chat: false,
+                has_panic_button: false
+            };
+
             const refCode = this.generateReferralCode(payment.package_name);
 
             // 3. Insert into subscription_codes
