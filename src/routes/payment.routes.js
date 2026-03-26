@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/payment.controller');
 const { userAuth } = require('../middleware/userAuth.middleware');
@@ -15,6 +15,7 @@ router.get('/topup-tiers', paymentController.getTopupTiers);
 
 // ── Midtrans Webhook (server-to-server, no auth) ──
 router.post('/webhook', paymentController.webhook);
+router.post('/notify', paymentController.notifyManualPayment);
 router.get('/webhook', (req, res) => res.json({ success: true, message: 'Midtrans Webhook is UP and ready for POST notifications' }));
 
 // ── Protected (user auth required) ──

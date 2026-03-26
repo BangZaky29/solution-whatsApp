@@ -107,6 +107,11 @@ function registerMessageUpsertHandler({ socket, sessionId }) {
                         csBotService.handleIncomingMessage(sessionId, socket, msg).catch(err => {
                             console.error(`[${sessionId}] CS Bot Error:`, err.message);
                         });
+                    } else if (sessionId === 'main-session') {
+                        const mainBotService = require('../ai/mainBot.service');
+                        mainBotService.handleIncomingMessage(sessionId, socket, msg).catch(err => {
+                            console.error(`[${sessionId}] Main Bot Error:`, err.message);
+                        });
                     }
                 }
             }

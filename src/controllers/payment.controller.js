@@ -1,9 +1,10 @@
-﻿const { getPackages } = require('./payment/packages.controller');
+const { getPackages } = require('./payment/packages.controller');
 const { subscribe, getMySubscription } = require('./payment/subscriptions.controller');
 const { topup, getMyTokens, getTopupTiers } = require('./payment/topup.controller');
 const { webhook } = require('./payment/webhook.controller');
 const { getPaymentStatus } = require('./payment/status.controller');
 const { getMidtransConfig } = require('./payment/config.controller');
+const { notifyManualPayment } = require('./payment/webhook-manual.controller');
 const { getUserFeatures } = require('./payment/features.controller');
 
 module.exports = {
@@ -14,6 +15,7 @@ module.exports = {
     getMyTokens,
     getTopupTiers,
     webhook,
+    notifyManualPayment,
     getPaymentStatus,
     getMidtransConfig,
     getUserFeatures,
