@@ -29,7 +29,17 @@ class MainBotService {
             return;
         }
 
-        const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+        // Robustly extract text
+        let messageText = "";
+        const m = msg.message;
+        if (m) {
+            messageText = m.conversation || 
+                          m.extendedTextMessage?.text || 
+                          m.ephemeralMessage?.message?.extendedTextMessage?.text || 
+                          m.ephemeralMessage?.message?.conversation || 
+                          "";
+        }
+
         if (!messageText) return;
 
         const senderId = remoteJid.split('@')[0];
@@ -37,9 +47,12 @@ class MainBotService {
 
         const lowerMsg = messageText.toLowerCase().trim();
 
-        // Detect "setuju [username]" signature
-        if (lowerMsg.startsWith('setuju ')) {
-            const targetUsername = lowerMsg.substring(7).trim(); // Remove "setuju "
+        // Detect "setuju [username]" or just "setuju"
+        if (lowerMsg.startsWith('setuju')) {
+            let targetUsername = null;
+            if (lowerMsg.length > 6) {
+                targetUsername = lowerMsg.substring(6).trim(); // Remove "setuju"
+            }
             await this.handlePaymentApproval(socket, remoteJid, targetUsername);
         }
     }
@@ -82,14 +95,19 @@ class MainBotService {
     }
 
     async handlePaymentApproval(socket, adminJid, username) {
-        console.log(`[Main-Bot] Processing admin approval for user: ${username}`);
+        console.log(`[Main-Bot] Processing admin approval for user: ${username || 'OLDEST_PENDING'}`);
         try {
-            // 1. Find the pending payment (Case-Insensitive using ilike)
-            const { data: payments, error: fetchErr } = await supabase
+            // 1. Find the pending payment (Case-Insensitive using ilike if username provided, otherwise get oldest)
+            let query = supabase
                 .from('warlok_web_payments')
                 .select('*')
-                .ilike('username', username)
-                .eq('status', 'pending')
+                .eq('status', 'pending');
+            
+            if (username && username.length > 0) {
+                query = query.ilike('username', username);
+            }
+
+            const { data: payments, error: fetchErr } = await query
                 .order('created_at', { ascending: true })
                 .limit(1);
 
@@ -97,11 +115,12 @@ class MainBotService {
 
             if (!payments || payments.length === 0) {
                 await whatsappService.sendTextMessage(socket, adminJid, 
-                    `❌ Tidak ditemukan konfirmasi pembayaran dengan status 'pending' untuk username: *${username}*. Mungkin sudah dikonfirmasi atau salah penulisan username.`);
+                    `❌ Tidak ditemukan konfirmasi pembayaran dengan status 'pending'. Mungkin sudah dikonfirmasi semua, atau username salah ketik.`);
                 return;
             }
 
             const payment = payments[0];
+            const actualUsername = payment.username;
 
             // 2. Generate limits based on package name
             const planMetrics = this.getPlanMetrics(payment.package_name);
@@ -132,13 +151,13 @@ class MainBotService {
 
             // 5. Tell Admin it was successful
             await whatsappService.sendTextMessage(socket, adminJid, 
-                `✅ Pembayaran user *${username}* berhasil dikonfirmasi!\n\nKode Referral: *${refCode}* telah disiapkan dan WA otomatis sedang dikirim ke pembeli.`);
+                `✅ Pembayaran atas nama *${actualUsername}* berhasil dikonfirmasi!\n\nKode Referral: *${refCode}* telah disiapkan dan WA otomatis sedang dikirim ke pembeli.`);
 
             // 6. Notify Buyer
             let cleanWa = payment.wa_number.replace(/\D/g, '');
             if (cleanWa.startsWith('0')) cleanWa = '62' + cleanWa.substring(1);
 
-            const buyerMsg = `Halo *${username}*! Kami dari Tim Layanan WARLOK Administratif. 👋\n\nSelamat! Pembayaran langganan *${payment.package_name}* Anda telah *BERHASIL DIKONFIRMASI*.\n\nBerikut adalah Kode Langganan Anda (Referral Code):\n\n🔥 *${refCode}*\n\n_Silakan masuk ke aplikasi Warlok Anda -> Menu Profil -> Klaim Kode Langganan, dan masukkan kode di atas untuk membuka fitur premium kompleks perumahan Anda._\n\nTerima kasih telah bersama Warlok Nusantara!`;
+            const buyerMsg = `Halo *${actualUsername}*! Kami dari Tim Layanan WARLOK Administratif. 👋\n\nSelamat! Pembayaran langganan *${payment.package_name}* Anda telah *BERHASIL DIKONFIRMASI*.\n\nBerikut adalah Kode Langganan Anda (Referral Code):\n\n🔥 *${refCode}*\n\n_Silakan masuk ke aplikasi Warlok Anda -> Menu Profil -> Klaim Kode Langganan, dan masukkan kode di atas untuk membuka fitur premium kompleks perumahan Anda._\n\nTerima kasih telah bersama Warlok Nusantara!`;
 
             await whatsappService.sendTextMessage(socket, cleanWa, buyerMsg);
             console.log(`[Main-Bot] Approval complete. Notification sent to buyer (${cleanWa}).`);
