@@ -44,6 +44,7 @@ app.use(cors({
     origin: [
         'https://admin-controller.nuansasolution.id',
         'https://nuansasolution.id',
+        'https://warlok-website.nuansasolution.id',
         'https://new-wa-bot-ai.bangzaky0029.workers.dev',
         'https://neural-wateway.bangzaky0029.workers.dev',
         'http://localhost:5173',
