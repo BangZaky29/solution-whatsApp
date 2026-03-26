@@ -15,7 +15,7 @@ exports.notifyManualPayment = async (req, res) => {
             return res.status(503).json({ error: 'main-session WhatsApp is down.' });
         }
 
-        const adminNumber = '081995770190';
+        const adminNumber = process.env.WA_SUPER_ADMIN_NUMBER || '081995770190';
         const caption = `Halo kak! Ada payment masuk atas nama *${username}* yang membeli paket langganan.\n\nDetail paket: *${package_name}*\nNo. WA Pembeli: *${wa_number}*\n\nMohon dicek bukti pembayarannya. Balas dengan format:\n\n*setuju ${username}*\n\nUntuk mengkonfirmasi pembayaran dan mengirimkan kode referral secara otomatis kepada pembeli.`;
 
         // Send WhatsApp Image Message

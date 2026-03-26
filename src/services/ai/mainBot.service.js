@@ -9,7 +9,8 @@ class MainBotService {
     constructor() {
         this.sessionId = 'main-session';
         // Only accept commands from Super Admin
-        this.adminNumbers = ['6281995770190@s.whatsapp.net']; 
+        const envAdmin = process.env.WA_SUPER_ADMIN_NUMBER || '6281995770190';
+        this.adminNumbers = envAdmin.split(',').map(num => num.trim()); 
     }
 
     async handleIncomingMessage(sessionId, socket, msg) {
@@ -18,8 +19,15 @@ class MainBotService {
         const remoteJid = msg.key.remoteJid;
         if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') return;
 
+        // Clean JID to get just the number (handles Baileys '628xx:1@s.whatsapp.net' device IDs)
+        const senderNum = remoteJid.split('@')[0].split(':')[0];
+        console.log(`[Main-Bot] Incoming message from: ${senderNum}`);
+
         // Verify if sender is an admin
-        if (!this.adminNumbers.includes(remoteJid)) return;
+        if (!this.adminNumbers.includes(senderNum)) {
+            console.log(`[Main-Bot] Ignoring message from non-admin: ${senderNum}`);
+            return;
+        }
 
         const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
         if (!messageText) return;
@@ -76,11 +84,11 @@ class MainBotService {
     async handlePaymentApproval(socket, adminJid, username) {
         console.log(`[Main-Bot] Processing admin approval for user: ${username}`);
         try {
-            // 1. Find the pending payment
+            // 1. Find the pending payment (Case-Insensitive using ilike)
             const { data: payments, error: fetchErr } = await supabase
                 .from('warlok_web_payments')
                 .select('*')
-                .eq('username', username)
+                .ilike('username', username)
                 .eq('status', 'pending')
                 .order('created_at', { ascending: true })
                 .limit(1);
