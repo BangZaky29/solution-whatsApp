@@ -1,5 +1,5 @@
 const whatsappService = require('../whatsapp/whatsapp.service');
-const supabase = require('../../config/supabase');
+const { warlokSupabase } = require('../../config/supabase');
 
 /**
  * MainSession Bot Service
@@ -98,7 +98,7 @@ class MainBotService {
         console.log(`[Main-Bot] Processing admin approval for user: ${username || 'OLDEST_PENDING'}`);
         try {
             // 1. Find the pending payment (Case-Insensitive using ilike if username provided, otherwise get oldest)
-            let query = supabase
+            let query = warlokSupabase
                 .from('warlok_web_payments')
                 .select('*')
                 .eq('status', 'pending');
@@ -127,7 +127,7 @@ class MainBotService {
             const refCode = this.generateReferralCode(payment.package_name);
 
             // 3. Insert into subscription_codes
-            const { error: insertCodeErr } = await supabase
+            const { error: insertCodeErr } = await warlokSupabase
                 .from('subscription_codes')
                 .insert({
                     code: refCode,
@@ -142,7 +142,7 @@ class MainBotService {
             if (insertCodeErr) throw insertCodeErr;
 
             // 4. Update warlok_web_payments to 'verified'
-            const { error: updatePayErr } = await supabase
+            const { error: updatePayErr } = await warlokSupabase
                 .from('warlok_web_payments')
                 .update({ status: 'verified' })
                 .eq('id', payment.id);

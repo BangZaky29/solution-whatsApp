@@ -1,6 +1,6 @@
 const sessionManager = require('../../services/whatsapp/session.manager');
 const whatsappService = require('../../services/whatsapp/whatsapp.service');
-const supabase = require('../../config/supabase');
+const { warlokSupabase } = require('../../config/supabase');
 
 exports.notifyManualPayment = async (req, res) => {
     try {
