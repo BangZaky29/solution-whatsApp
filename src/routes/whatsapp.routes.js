@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const sessionController = require('../controllers/session.controller');
 const whatsappController = require('../controllers/whatsapp.controller');
@@ -20,6 +20,7 @@ router.post('/:sessionId/send', userAuth, validateSession, whatsappController.se
 router.post('/:sessionId/send-media', userAuth, validateSession, whatsappController.sendMedia);
 router.post('/:sessionId/send-bulk', userAuth, validateSession, whatsappController.sendBulk);
 router.post('/:sessionId/notify/payment-confirmation', userAuth, validateSession, whatsappController.sendPaymentConfirmation);
+router.post('/:sessionId/notify/developer', userAuth, validateSession, whatsappController.notifyDeveloper);
 router.get('/logs', userAuth, whatsappController.getLogs);
 
 // Config & Stats Routes (PROTECTED BY USER AUTH)

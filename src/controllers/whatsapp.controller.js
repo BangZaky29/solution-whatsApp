@@ -1,5 +1,5 @@
-﻿const { sendText, sendMedia, sendBulk } = require('./whatsapp/messages.controller');
-const { sendPaymentConfirmation } = require('./whatsapp/notifications.controller');
+const { sendText, sendMedia, sendBulk } = require('./whatsapp/messages.controller');
+const { sendPaymentConfirmation, notifyDeveloper } = require('./whatsapp/notifications.controller');
 const { getLogs } = require('./whatsapp/logs.controller');
 
 module.exports = {
@@ -7,5 +7,6 @@ module.exports = {
     sendMedia,
     sendBulk,
     sendPaymentConfirmation,
+    notifyDeveloper,
     getLogs
 };

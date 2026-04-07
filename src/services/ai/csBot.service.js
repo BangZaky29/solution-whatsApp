@@ -36,7 +36,7 @@ class CSBotService {
 
         if (!session || !session.socket || session.connectionState.connection !== 'open') {
             const status = session?.connectionState?.connection || 'NOT_FOUND';
-            console.warn(`⚠️ [CS-Bot] Cannot send OTP: Session is ${status}`);
+            console.warn(`⚠️ [CS-Bot] Cannot send OTP: Session is ${status}`);
             return {
                 success: false,
                 error: `CS-BOT session is ${status}. Please ensure the bot is connected.`
@@ -53,7 +53,7 @@ class CSBotService {
         if (result.success) {
             console.log(`✅ [OTP-Service] Success! OTP sent to ${sender}`);
         } else {
-            console.error(`âŒ [OTP-Service] Failed to send to ${sender}: ${result.error}`);
+            console.error(`❌ [OTP-Service] Failed to send to ${sender}: ${result.error}`);
         }
 
         return result;
