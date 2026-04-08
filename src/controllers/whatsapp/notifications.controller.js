@@ -3,8 +3,11 @@ const whatsappService = require('../../services/whatsapp/whatsapp.service');
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const sendPaymentConfirmation = async (req, res) => {
-    const ADMIN_NUMBER = process.env.DEVELOPER_WA_NUMBER || '6288294096100';
     const ADMIN_DASHBOARD_URL = 'https://admin-controller.nuansasolution.id/';
+    const financialAdmins = (process.env.FINANCIAL_ADMIN_NUMBERS || process.env.DEVELOPER_WA_NUMBER || '6288294096100')
+        .split(',')
+        .map(n => n.trim())
+        .filter(n => n);
 
     try {
         const { user_name, package_name, amount, invoice_id } = req.body;
@@ -32,16 +35,30 @@ const sendPaymentConfirmation = async (req, res) => {
             `Tolong segera kondisikan dan proses aktivasi di dashboard admin.\n` +
             `🔗\n${ADMIN_DASHBOARD_URL}`;
 
-        const result = await whatsappService.sendTextMessage(socket, ADMIN_NUMBER, message);
+        // Send early response to backend
+        res.json({ success: true, message: `Broadcasting payment notification to ${financialAdmins.length} admins...` });
 
-        if (result.success) {
-            res.json({ success: true, message: 'Notification sent' });
-        } else {
-            res.status(500).json({ success: false, error: 'Failed to send WhatsApp message' });
+        // Broadcast sequentially to financial admins
+        for (let i = 0; i < financialAdmins.length; i++) {
+            const number = financialAdmins[i];
+            try {
+                console.log(`[FINANCE_NOTIFICATION] Sending to ${number} (${i + 1}/${financialAdmins.length})...`);
+                await whatsappService.sendTextMessage(socket, number, message);
+                
+                // Small delay between sends
+                if (i < financialAdmins.length - 1) {
+                    await sleep(3000);
+                }
+            } catch (err) {
+                console.error(`[FINANCE_NOTIFICATION] Failed to send to ${number}:`, err);
+            }
         }
     } catch (error) {
-        console.error('Error in payment-confirmation:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        console.error('Error in payment-confirmation broadcast:', error);
+        // Only error if we haven't sent the response yet
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: 'Internal server error' });
+        }
     }
 };
 
