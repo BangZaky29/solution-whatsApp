@@ -1,4 +1,4 @@
-﻿const {
+const {
     initAuthCreds,
     proto
 } = require('@whiskeysockets/baileys');
@@ -163,17 +163,17 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
 
                     if (upserts.length > 0) {
                         const { error } = await supabase.from(TABLE_NAME).upsert(upserts, { onConflict: 'id' });
-                        if (error) console.error(`âŒ [${sessionId}] Batch upsert failed:`, error.message);
+                        if (error) console.error(`[ERROR] [${sessionId}] Batch upsert failed:`, error.message);
                     }
 
                     if (deletes.length > 0) {
                         const { error } = await supabase.from(TABLE_NAME).delete().in('id', deletes);
-                        if (error) console.error(`âŒ [${sessionId}] Batch delete failed:`, error.message);
+                        if (error) console.error(`[ERROR] [${sessionId}] Batch delete failed:`, error.message);
                     }
                 };
                 
                 writeMutex = writeMutex.then(task).catch(err => {
-                    console.error(`âŒ [${sessionId}] Mutex write failed:`, err.message);
+                    console.error(`[ERROR] [${sessionId}] Mutex write failed:`, err.message);
                 });
                 return writeMutex;
             }
@@ -184,10 +184,10 @@ async function useSupabaseAuthState(sessionId = 'main-session') {
         state,
         saveCreds: async () => writeData('auth', 'creds', creds),
         clearSession: async () => {
-            console.log(`ðŸ§¹ [${sessionId}] Clearing all session data from ${TABLE_NAME}...`);
+            console.log(`[CLEAN] [${sessionId}] Clearing all session data from ${TABLE_NAME}...`);
             // Use exact prefix match to avoid affecting other sessions in the same table
             const { error } = await supabase.from(TABLE_NAME).delete().filter('id', 'like', `${sessionId}:%`);
-            if (error) console.error(`âŒ [${sessionId}] Clear session failed:`, error.message);
+            if (error) console.error(`[ERROR] [${sessionId}] Clear session failed:`, error.message);
         }
     };
 }

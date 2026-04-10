@@ -1,15 +1,15 @@
-﻿function buildPaymentPendingMessage(userName, packageName, orderId) {
+function buildPaymentPendingMessage(userName, packageName, orderId) {
     return [
         `💳 *PEMBAYARAN MENUNGGU*`,
         ``,
         `Halo ${userName},`,
         `Pesanan Anda sedang menunggu pembayaran.`,
         ``,
-        `ðŸ“¦ Paket: *${packageName}*`,
-        `ðŸ†” Order ID: \`${orderId}\``,
+        `📦 Paket: *${packageName}*`,
+        `🆔 Order ID: \`${orderId}\``,
         ``,
         `Silakan selesaikan pembayaran Anda segera.`,
-        `Terima kasih! ðŸ™`,
+        `Terima kasih! 🙏`,
     ].join('\n');
 }
 
@@ -24,17 +24,17 @@ function buildPaymentSuccessMessage(userName, packageName, tokenAmount, expiresA
         `Halo ${userName},`,
         `Pembayaran Anda telah berhasil diproses.`,
         ``,
-        `ðŸ“¦ Paket: *${packageName}*`,
-        `ðŸŽ« Token: *${tokenAmount.toLocaleString()} token*`,
-        `ðŸ“… Berlaku hingga: *${expDate}*`,
+        `📦 Paket: *${packageName}*`,
+        `🎫 Token: *${tokenAmount.toLocaleString()} token*`,
+        `📅 Berlaku hingga: *${expDate}*`,
         ``,
-        `Selamat menggunakan WA-BOT-AI! 🤖âœ¨`,
+        `Selamat menggunakan WA-BOT-AI! 🤖✨`,
     ].join('\n');
 }
 
 function buildPaymentFailedMessage(userName, packageName) {
     return [
-        `âŒ *PEMBAYARAN GAGAL*`,
+        `❌ *PEMBAYARAN GAGAL*`,
         ``,
         `Halo ${userName},`,
         `Pembayaran untuk paket *${packageName}* gagal atau dibatalkan.`,
