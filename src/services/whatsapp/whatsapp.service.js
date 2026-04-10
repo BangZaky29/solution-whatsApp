@@ -1,4 +1,4 @@
-﻿function formatPhoneNumber(number) {
+function formatPhoneNumber(number) {
     if (number.includes('@')) return number;
     let cleaned = number.replace(/\D/g, '');
     if (cleaned.startsWith('0')) cleaned = '62' + cleaned.substring(1);
@@ -8,9 +8,14 @@
 
 function validatePhoneNumber(number) {
     if (!number) return { valid: false, message: 'Phone number is required' };
+    
+    // Jika sudah format group ID @g.us, abaikan batasan panjang digit
+    if (number.includes('@g.us')) return { valid: true };
+    
+    // Jika format biasa, bersihkan dan cek panjang
     const cleaned = number.replace(/\D/g, '');
     if (cleaned.length < 10) return { valid: false, message: 'Phone number too short' };
-    if (cleaned.length > 15) return { valid: false, message: 'Phone number too long' };
+    if (cleaned.length > 18) return { valid: false, message: 'Phone number too long' }; // Dinaikkan menjadi 18 just in case
     return { valid: true };
 }
 
