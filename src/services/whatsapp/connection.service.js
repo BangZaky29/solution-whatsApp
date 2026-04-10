@@ -1,4 +1,4 @@
-﻿const {
+const {
     default: makeWASocket,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore
@@ -39,7 +39,7 @@ class ConnectionService {
 
                 // If there's an old socket, clean it up aggressively
                 if (existingSession.socket) {
-                    console.log(`ðŸ§¹ [${sessionId}] Cleaning up old socket before reconnecting...`);
+                    console.log(`[CLEAN] [${sessionId}] Cleaning up old socket before reconnecting...`);
                     try {
                         existingSession.socket.ev.removeAllListeners();
                         existingSession.socket.end();
@@ -111,14 +111,14 @@ class ConnectionService {
             if (phoneNumber) {
                 const cleanNumber = phoneNumber.replace(/\D/g, '');
                 if (cleanNumber) {
-                    console.log(`ðŸŒ€ [${displayName}] Requesting Pairing Code for: ${cleanNumber}`);
+                    console.log(`[PAIRING] [${displayName}] Requesting Pairing Code for: ${cleanNumber}`);
                     setTimeout(async () => {
                         try {
                             const code = await socket.requestPairingCode(cleanNumber);
                             sessionData.connectionState.pairingCode = code;
-                            console.log(`🔐‘ [${displayName}] Pairing Code Generated: ${code}`);
+                            console.log(`[CODE] [${displayName}] Pairing Code Generated: ${code}`);
                         } catch (err) {
-                            console.error(`âŒ [${displayName}] Failed to generate pairing code:`, err.message);
+                            console.error(`[ERROR] [${displayName}] Failed to generate pairing code:`, err.message);
                         }
                     }, 3000);
                 }
@@ -138,7 +138,7 @@ class ConnectionService {
 
         } catch (error) {
             connectionLock.delete(sessionId);
-            console.error(`âŒ [${sessionId}] Critical Connection Error:`, error.message);
+            console.error(`[CRITICAL] [${sessionId}] Critical Connection Error:`, error.message);
             // Retry connection after a delay
             setTimeout(() => this.connect(sessionId), 15000);
         }
